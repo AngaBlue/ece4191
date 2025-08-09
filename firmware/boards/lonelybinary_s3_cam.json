@@ -1,0 +1,27 @@
+
+{
+  "build": {
+    "core": "esp32",
+    "mcu": "esp32s3",
+    "cpu": "esp32s3",
+    "variant": "esp32s3",
+    "f_cpu": "240000000L",
+    "flash_mode": "qio",
+    "flash_freq": "80m",
+    "flash_size": "16MB",
+    "psram": "opi"
+  },
+  "upload": {
+    "maximum_size": 16777216,
+    "maximum_ram_size": 524288,
+    "protocol": "esptool",
+    "require_upload_port": true,
+    "speed": 115200
+  },
+  "name": "Lonely Binary ESP32-S3 CAM (16MB, OPI PSRAM)",
+  "platform": "espressif32",
+  "frameworks": ["arduino", "espidf"],
+  "vendor": "Lonely Binary",
+  "url": "https://lonelybinary.com/products/s3c",
+  "tags": ["esp32", "esp32-s3", "camera", "ov2640", "psram", "opi"]
+}
