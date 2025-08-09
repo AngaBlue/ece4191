@@ -107,7 +107,7 @@ bool init_camera()
   c.pin_reset = CAM_PIN_RESET;
   c.xclk_freq_hz = 20000000;
   c.frame_size = FRAMESIZE_UXGA;
-  c.jpeg_quality = 14;
+  c.jpeg_quality = 8;
   c.fb_count = 4;
   c.fb_location = CAMERA_FB_IN_PSRAM;
   c.grab_mode = CAMERA_GRAB_LATEST;
@@ -117,14 +117,7 @@ bool init_camera()
   if (err != ESP_OK)
     return false;
 
-  // If you want a smaller/larger stream, tweak here at runtime:
   sensor_t *s = esp_camera_sensor_get();
-  if (s)
-  {
-    // s->set_framesize(s, FRAMESIZE_QVGA); // uncomment for 320x240
-    // s->set_brightness(s, 1);
-    // s->set_contrast(s, 1);
-  }
   return true;
 }
 
