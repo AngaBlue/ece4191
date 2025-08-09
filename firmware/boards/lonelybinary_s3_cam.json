@@ -6,7 +6,7 @@
     "cpu": "esp32s3",
     "variant": "esp32s3",
     "f_cpu": "240000000L",
-    "flash_mode": "qio",
+    "flash_mode": "dio",
     "flash_freq": "80m",
     "flash_size": "16MB",
     "psram": "opi"
