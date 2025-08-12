@@ -106,8 +106,8 @@ bool init_camera()
   c.pin_pwdn = CAM_PIN_PWDN;
   c.pin_reset = CAM_PIN_RESET;
   c.xclk_freq_hz = 20000000;
-  c.frame_size = FRAMESIZE_UXGA;
-  c.jpeg_quality = 8;
+  c.frame_size = FRAMESIZE_VGA;
+  c.jpeg_quality = 12;
   c.fb_count = 4;
   c.fb_location = CAMERA_FB_IN_PSRAM;
   c.grab_mode = CAMERA_GRAB_LATEST;
