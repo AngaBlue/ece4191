@@ -144,14 +144,23 @@ void sendVideo(void *pvParameters)
 {
   while (true)
   {
-    // Send frame via RTP
-    if (rtspServer.readyToSendFrame())
+    if (!rtspServer.readyToSendFrame())
     {
-      camera_fb_t *fb = esp_camera_fb_get();
-      rtspServer.sendRTSPFrame(fb->buf, fb->len, quality, fb->width, fb->height);
-      esp_camera_fb_return(fb);
+      vTaskDelay(1);
+      continue;
     }
-    vTaskDelay(pdMS_TO_TICKS(1));
+
+    camera_fb_t *fb = esp_camera_fb_get();
+    if (!fb)
+    {
+      vTaskDelay(1);
+      continue;
+    }
+
+    rtspServer.sendRTSPFrame(fb->buf, fb->len, quality, fb->width, fb->height);
+    esp_camera_fb_return(fb);
+
+    vTaskDelay(1);
   }
 }
 
@@ -179,7 +188,7 @@ void setup()
     Serial.println("Failed to start RTSP server");
   }
 
-  xTaskCreate(sendVideo, "Video", 8192, NULL, 9, &videoTaskHandle);
+  xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
 }
 
 void loop()
