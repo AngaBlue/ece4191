@@ -1,11 +1,17 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <ESP32-RTSPServer.h>
 #include "esp_camera.h"
 #include <WebServer.h>
 #include "pins.h"
 #include "config.h"
 
 WebServer server(80);
+RTSPServer rtspServer;
+
+//  RSTP
+int quality;
+TaskHandle_t videoTaskHandle = NULL;
 
 // Single JPEG endpoint
 void handle_jpg()
@@ -127,6 +133,28 @@ void init_ap()
   Serial.println(WiFi.softAPIP());
 }
 
+void getFrameQuality()
+{
+  sensor_t *s = esp_camera_sensor_get();
+  quality = s->status.quality;
+  Serial.printf("Camera Quality is: %d\n", quality);
+}
+
+void sendVideo(void *pvParameters)
+{
+  while (true)
+  {
+    // Send frame via RTP
+    if (rtspServer.readyToSendFrame())
+    {
+      camera_fb_t *fb = esp_camera_fb_get();
+      rtspServer.sendRTSPFrame(fb->buf, fb->len, quality, fb->width, fb->height);
+      esp_camera_fb_return(fb);
+    }
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+}
+
 void setup()
 {
   Serial.begin(115200);
@@ -139,9 +167,23 @@ void setup()
   server.on("/stream", HTTP_GET, handle_stream);
   server.begin();
   Serial.println("HTTP server started");
+
+  getFrameQuality();
+
+  if (rtspServer.init())
+  {
+    Serial.printf("RTSP server started successfully using default values, Connect to rtsp://%s:554/\n", WiFi.softAPIP().toString().c_str());
+  }
+  else
+  {
+    Serial.println("Failed to start RTSP server");
+  }
+
+  xTaskCreate(sendVideo, "Video", 8192, NULL, 9, &videoTaskHandle);
 }
 
 void loop()
 {
   server.handleClient();
+  vTaskDelete(NULL);
 }
