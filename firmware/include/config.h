@@ -12,5 +12,9 @@ static const char *AP_PASS = "12345678";
  */
 #define FRAME_SIZE FRAMESIZE_VGA
 #define JPEG_QUALITY 10
-#define FRAME_BUFFER_COUNT 2
+#define FRAME_BUFFER_COUNT 1
 
+/**
+ * RTSP
+ */
+#define RTSP_VIDEO_NONBLOCK

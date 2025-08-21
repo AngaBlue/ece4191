@@ -9,7 +9,7 @@
 WebServer server(80);
 RTSPServer rtspServer;
 
-//  RSTP
+// RTSP
 int quality;
 TaskHandle_t videoTaskHandle = NULL;
 
@@ -149,17 +149,14 @@ void sendVideo(void *pvParameters)
       vTaskDelay(1);
       continue;
     }
-
     camera_fb_t *fb = esp_camera_fb_get();
     if (!fb)
     {
       vTaskDelay(1);
       continue;
     }
-
     rtspServer.sendRTSPFrame(fb->buf, fb->len, quality, fb->width, fb->height);
     esp_camera_fb_return(fb);
-
     vTaskDelay(1);
   }
 }
@@ -178,6 +175,9 @@ void setup()
   Serial.println("HTTP server started");
 
   getFrameQuality();
+  rtspServer.maxRTSPClients = 1;
+  rtspServer.transport = RTSPServer::VIDEO_ONLY;
+  xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
 
   if (rtspServer.init())
   {
@@ -187,12 +187,9 @@ void setup()
   {
     Serial.println("Failed to start RTSP server");
   }
-
-  xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
 }
 
 void loop()
 {
   server.handleClient();
-  vTaskDelete(NULL);
 }
