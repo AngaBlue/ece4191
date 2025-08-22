@@ -1,0 +1,10 @@
+names:
+- kangaroo
+- cockatoo
+- tasmanian_devil
+- frog
+- platypus
+nc: 8
+test: test/images
+train: train/images
+val: val/images
