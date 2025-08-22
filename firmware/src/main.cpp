@@ -13,6 +13,18 @@ RTSPServer rtspServer;
 int quality;
 TaskHandle_t videoTaskHandle = NULL;
 
+// Audio
+#ifdef audio_enabled
+#include <ESP_I2S.h>
+// I2SClass object for I2S communication
+I2SClass I2S;
+
+// Audio variables
+int sampleRate = 48000;          // Sample rate in Hz
+const size_t sampleBytes = 1024; // Sample buffer size (in bytes)
+int16_t *sampleBuffer = NULL;    // Pointer to the sample buffer
+#endif
+
 // Single JPEG endpoint
 void handle_jpg()
 {
@@ -144,22 +156,64 @@ void sendVideo(void *pvParameters)
 {
   while (true)
   {
-    if (!rtspServer.readyToSendFrame())
+    if (rtspServer.readyToSendFrame())
     {
-      vTaskDelay(1);
-      continue;
+      camera_fb_t *fb = esp_camera_fb_get();
+      if (fb)
+      {
+        rtspServer.sendRTSPFrame(fb->buf, fb->len, quality, fb->width, fb->height);
+        esp_camera_fb_return(fb);
+      }
     }
-    camera_fb_t *fb = esp_camera_fb_get();
-    if (!fb)
-    {
-      vTaskDelay(1);
-      continue;
-    }
-    rtspServer.sendRTSPFrame(fb->buf, fb->len, quality, fb->width, fb->height);
-    esp_camera_fb_return(fb);
+
     vTaskDelay(1);
   }
 }
+
+#ifdef audio_enabled
+static bool setupMic()
+{
+  bool res;
+  // I2S mic and I2S amp can share same I2S channel
+  I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1); // BCLK/SCK, LRCLK/WS, SDOUT, SDIN, MCLK
+  res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_24BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
+  if (sampleBuffer == NULL)
+    sampleBuffer = (int16_t *)malloc(sampleBytes);
+  return res;
+}
+
+/**
+ * @brief Reads audio data from the I2S microphone.
+ *
+ * @return The number of bytes read.
+ */
+static size_t micInput()
+{
+  // read esp mic
+  size_t bytesRead = 0;
+  bytesRead = I2S.readBytes((char *)sampleBuffer, sampleBytes);
+  return bytesRead;
+}
+/**
+ * @brief Task to send audio data via RTP.
+ */
+void sendAudio(void *pvParameters)
+{
+  while (true)
+  {
+    size_t bytesRead = 0;
+    if (rtspServer.readyToSendAudio())
+    {
+      bytesRead = micInput();
+      if (bytesRead)
+        rtspServer.sendRTSPAudio(sampleBuffer, bytesRead);
+      else
+        Serial.println("No audio Recieved");
+    }
+    vTaskDelay(pdMS_TO_TICKS(1)); // Delay for 1 second
+  }
+}
+#endif
 
 void setup()
 {
