@@ -18,7 +18,7 @@ SETS = ['train', 'val', 'test']
 SETS_DISTRIBUTION = [0.7, 0.2, 0.1]  # 70% train, 20% val, 10% test
 REPEATS_PER_ANIMAL = 20  # Number of times each animal image is used
 ALPHA_TOLERANCE = 30
-CLASS_NAMES = ['capsicum', 'garlic', 'lemon', 'lime', 'pear', 'potato', 'pumpkin', 'tomato']
+CLASS_NAMES = ['kangaroo', 'cockatoo', 'tasmanian_devil', 'frog', 'platypus']
 
 # Seed for reproducibility
 random.seed("meowmeowmeowmeow")
