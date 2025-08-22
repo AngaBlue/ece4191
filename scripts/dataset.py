@@ -36,7 +36,7 @@ for subdir in SETS:
 
 # Paths to animal and background images
 animals = [f for f in os.listdir(ANIMAL_DIR) if f.endswith('.png')]
-backgrounds = [b for b in os.listdir(BACKGROUND_DIR) if b.endswith('.png')]
+backgrounds = [b for b in os.listdir(BACKGROUND_DIR) if b.endswith('.jpg')]
 
 def get_label_index(animal_name):
     for idx, name in enumerate(CLASS_NAMES):
