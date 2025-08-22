@@ -4,7 +4,7 @@ names:
 - tasmanian_devil
 - frog
 - platypus
-nc: 8
-test: test/images
-train: train/images
-val: val/images
+nc: 5
+test: datasets/test/images
+train: datasets/train/images
+val: datasets/val/images

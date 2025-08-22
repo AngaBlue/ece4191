@@ -1,2 +1,4 @@
 scripts/**/*.jpg
 scripts/**/*.png
+scripts/datasets
+scripts/runs
