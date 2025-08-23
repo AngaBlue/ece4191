@@ -54,7 +54,6 @@
 #define PIN_I2S_SD 1
 #define PIN_I2S_WS 2
 #define PIN_I2S_SCK 42
-#define PIN_I2S_MCK 41
 #endif
 
 #ifdef esp32cam_aithinker

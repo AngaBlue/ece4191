@@ -23,6 +23,7 @@ I2SClass I2S;
 int sampleRate = 48000;          // Sample rate in Hz
 const size_t sampleBytes = 1024; // Sample buffer size (in bytes)
 int16_t *sampleBuffer = NULL;    // Pointer to the sample buffer
+TaskHandle_t audioTaskHandle = NULL;
 #endif
 
 // Single JPEG endpoint
@@ -171,15 +172,22 @@ void sendVideo(void *pvParameters)
 }
 
 #ifdef audio_enabled
-static bool setupMic()
+static void init_mic()
 {
   bool res;
   // I2S mic and I2S amp can share same I2S channel
   I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1); // BCLK/SCK, LRCLK/WS, SDOUT, SDIN, MCLK
-  res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_24BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
+  res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
   if (sampleBuffer == NULL)
     sampleBuffer = (int16_t *)malloc(sampleBytes);
-  return res;
+
+  if (res != true)
+  {
+    Serial.println("Microphone: init failed");
+    hang();
+  }
+
+  Serial.println("Microphone: init successful");
 }
 
 /**
@@ -222,6 +230,9 @@ void setup()
 
   init_camera();
   init_ap();
+#ifdef audio_enabled
+  init_mic();
+#endif
 
   server.on("/jpg", handle_jpg);
   server.on("/stream", HTTP_GET, handle_stream);
@@ -230,7 +241,13 @@ void setup()
 
   getFrameQuality();
   rtspServer.maxRTSPClients = 1;
+
+#ifdef audio_enabled
+  rtspServer.transport = RTSPServer::VIDEO_AND_AUDIO;
+  xTaskCreate(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle);
+#else
   rtspServer.transport = RTSPServer::VIDEO_ONLY;
+#endif
   xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
 
   if (rtspServer.init())
