@@ -18,3 +18,8 @@ static const char *AP_PASS = "12345678";
  * RTSP
  */
 #define RTSP_VIDEO_NONBLOCK
+
+/**
+ * UDP
+ */
+#define UDP_PORT 8484
