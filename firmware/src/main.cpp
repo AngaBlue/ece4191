@@ -73,18 +73,27 @@ void init_camera()
   Serial.println("Camera: init successful");
 }
 
+String getUniqueSSID()
+{
+  uint64_t chipid = ESP.getEfuseMac();
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%s-%04X", NAME, (uint16_t)(chipid & 0xFFFF));
+  return String(buf);
+}
+
 void init_ap()
 {
   WiFi.mode(WIFI_AP);
   WiFi.setSleep(false);
-  bool ok = WiFi.softAP(AP_SSID, AP_PASS, 1, 0, 1);
+  String ssid = getUniqueSSID();
+  bool ok = WiFi.softAP(ssid, AP_PASS, 1, 0, 1);
   if (!ok)
   {
     Serial.println("AP: init failed");
     hang();
   }
   Serial.print("AP SSID: ");
-  Serial.println(AP_SSID);
+  Serial.println(ssid);
   Serial.print("AP Pass: ");
   Serial.println(AP_PASS);
   Serial.print("AP IP:   ");
@@ -144,10 +153,10 @@ enum Command : uint8_t
 
 /**
  * @brief Calculates the checksum for a given buffer.
- * 
+ *
  * @param buf The buffer.
  * @param n The length of the buffer.
- * @return The checksum. 
+ * @return The checksum.
  */
 static uint8_t checksum(const uint8_t *buf, size_t n)
 {
@@ -159,10 +168,10 @@ static uint8_t checksum(const uint8_t *buf, size_t n)
 
 /**
  * @brief Reads an exact amount of bytes into a destination buffer.
- * 
+ *
  * @param dst The destination buffer.
  * @param n The number of bytes.
- * @return Whether the bytes were successfully read. 
+ * @return Whether the bytes were successfully read.
  */
 static bool readExactly(uint8_t *dst, size_t n)
 {
