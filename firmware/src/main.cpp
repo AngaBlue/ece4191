@@ -142,6 +142,13 @@ enum Command : uint8_t
   CMD_CAMERA = 0x03,
 };
 
+/**
+ * @brief Calculates the checksum for a given buffer.
+ * 
+ * @param buf The buffer.
+ * @param n The length of the buffer.
+ * @return The checksum. 
+ */
 static uint8_t checksum(const uint8_t *buf, size_t n)
 {
   uint16_t s = 0;
@@ -150,6 +157,13 @@ static uint8_t checksum(const uint8_t *buf, size_t n)
   return s & 0xFF;
 }
 
+/**
+ * @brief Reads an exact amount of bytes into a destination buffer.
+ * 
+ * @param dst The destination buffer.
+ * @param n The number of bytes.
+ * @return Whether the bytes were successfully read. 
+ */
 static bool readExactly(uint8_t *dst, size_t n)
 {
   size_t read = 0;
@@ -165,15 +179,15 @@ static bool readExactly(uint8_t *dst, size_t n)
 
 void onBrightness(int16_t level)
 {
-  Serial.printf("Brightness Level %u", level);
+  Serial.printf("Brightness Level: %u\n", level);
 }
 void onMovement(float x, float y)
 {
-  // e.g., robot/gamepad movement
+  Serial.printf("Movement: %.4f, %.4f\n", x, y);
 }
 void onCamera(float x, float y)
 {
-  // e.g., gimbal/camera pan-tilt
+  Serial.printf("Camera: %.4f, %.4f\n", x, y);
 }
 
 /**
@@ -333,13 +347,6 @@ void loop()
     break;
 
   default:
-    // Unknown command: ignore (future-proofing)
     break;
   }
-
-  // Optional ACK (uncomment if you want reliability on certain commands)
-  // udp.beginPacket(udp.remoteIP(), udp.remotePort());
-  // uint8_t ack[2] = { id, 0xAA }; // echo ID + OK marker
-  // udp.write(ack, 2);
-  // udp.endPacket();
 }
