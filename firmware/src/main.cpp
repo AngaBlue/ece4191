@@ -77,7 +77,7 @@ String getUniqueSSID()
 {
   uint64_t chipid = ESP.getEfuseMac();
   char buf[32];
-  snprintf(buf, sizeof(buf), "%s-%04X", NAME, (uint16_t)(chipid & 0xFFFF));
+  snprintf(buf, sizeof(buf), "%s-%08llX", NAME, (uint16_t)(chipid & 0xFFFF));
   return String(buf);
 }
 
@@ -125,24 +125,6 @@ void sendVideo(void *pvParameters)
   }
 }
 
-#ifdef audio_enabled
-static void init_mic()
-{
-  bool res;
-  // I2S mic and I2S amp can share same I2S channel
-  I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1); // BCLK/SCK, LRCLK/WS, SDOUT, SDIN, MCLK
-  res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
-  if (sampleBuffer == NULL)
-    sampleBuffer = (int16_t *)malloc(sampleBytes);
-
-  if (res != true)
-  {
-    Serial.println("Microphone: init failed");
-    hang();
-  }
-
-  Serial.println("Microphone: init successful");
-}
 
 enum Command : uint8_t
 {
@@ -197,6 +179,25 @@ void onMovement(float x, float y)
 void onCamera(float x, float y)
 {
   Serial.printf("Camera: %.4f, %.4f\n", x, y);
+}
+
+#ifdef audio_enabled
+static void init_mic()
+{
+  bool res;
+  // I2S mic and I2S amp can share same I2S channel
+  I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1); // BCLK/SCK, LRCLK/WS, SDOUT, SDIN, MCLK
+  res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
+  if (sampleBuffer == NULL)
+    sampleBuffer = (int16_t *)malloc(sampleBytes);
+
+  if (res != true)
+  {
+    Serial.println("Microphone: init failed");
+    hang();
+  }
+
+  Serial.println("Microphone: init successful");
 }
 
 /**
