@@ -1,13 +1,14 @@
 #include <Arduino.h>
 #include <WiFi.h>
+#include <WiFiUdp.h>
 #include <ESP32-RTSPServer.h>
 #include "esp_camera.h"
-#include <WebServer.h>
 #include "pins.h"
 #include "config.h"
 
-WebServer server(80);
 RTSPServer rtspServer;
+WiFiUDP udp;
+char packetBuffer[255];
 
 // RTSP
 int quality;
@@ -25,62 +26,6 @@ const size_t sampleBytes = 1024; // Sample buffer size (in bytes)
 int16_t *sampleBuffer = NULL;    // Pointer to the sample buffer
 TaskHandle_t audioTaskHandle = NULL;
 #endif
-
-// Single JPEG endpoint
-void handle_jpg()
-{
-  camera_fb_t *fb = esp_camera_fb_get();
-  if (!fb)
-  {
-    server.send(503, "text/plain", "Camera capture failed");
-    return;
-  }
-
-  // Tell WebServer we're sending a known-length body, then push the body
-  server.setContentLength(fb->len);
-  server.send(200, "image/jpeg", ""); // sends headers only
-  server.sendContent(reinterpret_cast<const char *>(fb->buf), fb->len);
-  esp_camera_fb_return(fb);
-}
-
-// MJPEG stream endpoint
-void handle_stream()
-{
-  static const char *BOUNDARY = "frame";
-  WiFiClient client = server.client();
-  String hdr =
-      "HTTP/1.1 200 OK\r\n"
-      "Content-Type: multipart/x-mixed-replace; boundary=" +
-      String(BOUNDARY) + "\r\n"
-                         "Pragma: no-cache\r\nCache-Control: no-cache\r\n\r\n";
-  client.print(hdr);
-
-  while (client.connected())
-  {
-    camera_fb_t *fb = esp_camera_fb_get();
-    if (!fb)
-      break;
-
-    client.printf("--%s\r\nContent-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n", BOUNDARY, fb->len);
-    size_t to_write = fb->len;
-    const uint8_t *buf = fb->buf;
-    while (to_write)
-    {
-      size_t n = client.write(buf, to_write);
-      if (!n)
-      {
-        esp_camera_fb_return(fb);
-        return;
-      }
-      to_write -= n;
-      buf += n;
-    }
-    client.print("\r\n");
-    esp_camera_fb_return(fb);
-    // small yield to keep WiFi happy
-    delay(5);
-  }
-}
 
 void hang()
 {
@@ -128,18 +73,27 @@ void init_camera()
   Serial.println("Camera: init successful");
 }
 
+String getUniqueSSID()
+{
+  uint64_t chipid = ESP.getEfuseMac();
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%s-%08llX", NAME, (uint16_t)(chipid & 0xFFFF));
+  return String(buf);
+}
+
 void init_ap()
 {
   WiFi.mode(WIFI_AP);
   WiFi.setSleep(false);
-  bool ok = WiFi.softAP(AP_SSID, AP_PASS, 1, 0, 1);
+  String ssid = getUniqueSSID();
+  bool ok = WiFi.softAP(ssid, AP_PASS, 1, 0, 1);
   if (!ok)
   {
     Serial.println("AP: init failed");
     hang();
   }
   Serial.print("AP SSID: ");
-  Serial.println(AP_SSID);
+  Serial.println(ssid);
   Serial.print("AP Pass: ");
   Serial.println(AP_PASS);
   Serial.print("AP IP:   ");
@@ -169,6 +123,62 @@ void sendVideo(void *pvParameters)
 
     vTaskDelay(1);
   }
+}
+
+
+enum Command : uint8_t
+{
+  CMD_BRIGHTNESS = 0x01,
+  CMD_MOVEMENT = 0x02,
+  CMD_CAMERA = 0x03,
+};
+
+/**
+ * @brief Calculates the checksum for a given buffer.
+ *
+ * @param buf The buffer.
+ * @param n The length of the buffer.
+ * @return The checksum.
+ */
+static uint8_t checksum(const uint8_t *buf, size_t n)
+{
+  uint16_t s = 0;
+  for (size_t i = 0; i < n; ++i)
+    s += buf[i];
+  return s & 0xFF;
+}
+
+/**
+ * @brief Reads an exact amount of bytes into a destination buffer.
+ *
+ * @param dst The destination buffer.
+ * @param n The number of bytes.
+ * @return Whether the bytes were successfully read.
+ */
+static bool readExactly(uint8_t *dst, size_t n)
+{
+  size_t read = 0;
+  while (read < n)
+  {
+    int c = udp.read(dst + read, n - read);
+    if (c <= 0)
+      return false;
+    read += (size_t)c;
+  }
+  return true;
+}
+
+void onBrightness(int16_t level)
+{
+  Serial.printf("Brightness Level: %u\n", level);
+}
+void onMovement(float x, float y)
+{
+  Serial.printf("Movement: %.4f, %.4f\n", x, y);
+}
+void onCamera(float x, float y)
+{
+  Serial.printf("Camera: %.4f, %.4f\n", x, y);
 }
 
 #ifdef audio_enabled
@@ -234,10 +244,8 @@ void setup()
   init_mic();
 #endif
 
-  server.on("/jpg", handle_jpg);
-  server.on("/stream", HTTP_GET, handle_stream);
-  server.begin();
-  Serial.println("HTTP server started");
+  udp.begin(UDP_PORT);
+  Serial.printf("UDP control on %s:%u\n", WiFi.softAPIP().toString().c_str(), UDP_PORT);
 
   getFrameQuality();
   rtspServer.maxRTSPClients = 1;
@@ -262,5 +270,93 @@ void setup()
 
 void loop()
 {
-  server.handleClient();
+  int pktLen = udp.parsePacket();
+  if (pktLen <= 0)
+    return;
+
+  // Minimal header: CMD, LEN, ID
+  uint8_t hdr[3];
+  if (!readExactly(hdr, sizeof(hdr)))
+  {
+    while (udp.available())
+      udp.read();
+    return;
+  }
+  uint8_t cmd = hdr[0], len = hdr[1], id = hdr[2];
+
+  // Read payload + checksum
+  if (udp.available() < (int)len + 1)
+  {
+    while (udp.available())
+      udp.read();
+    return;
+  }
+  uint8_t payload[16]; // enough for our current commands
+  if (len > sizeof(payload))
+  {
+    while (udp.available())
+      udp.read();
+    return;
+  }
+  if (!readExactly(payload, len))
+  {
+    while (udp.available())
+      udp.read();
+    return;
+  }
+
+  uint8_t chk = 0;
+  if (!readExactly(&chk, 1))
+  {
+    while (udp.available())
+      udp.read();
+    return;
+  }
+
+  // Verify checksum
+  uint8_t calc = 0;
+  {
+    uint8_t tmp[3 + 16];
+    memcpy(tmp, hdr, 3);
+    memcpy(tmp + 3, payload, len);
+    calc = checksum(tmp, 3 + len);
+  }
+  if (chk != calc)
+    return; // drop silently or log
+
+  // Dispatch
+  switch (cmd)
+  {
+  case CMD_BRIGHTNESS:
+    if (len == 2)
+    {
+      int16_t level;
+      memcpy(&level, payload, 2);
+      onBrightness(level);
+    }
+    break;
+
+  case CMD_MOVEMENT:
+    if (len == 8)
+    {
+      float x, y;
+      memcpy(&x, payload + 0, 4);
+      memcpy(&y, payload + 4, 4);
+      onMovement(x, y);
+    }
+    break;
+
+  case CMD_CAMERA:
+    if (len == 8)
+    {
+      float x, y;
+      memcpy(&x, payload + 0, 4);
+      memcpy(&y, payload + 4, 4);
+      onCamera(x, y);
+    }
+    break;
+
+  default:
+    break;
+  }
 }
