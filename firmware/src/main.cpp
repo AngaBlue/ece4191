@@ -82,7 +82,7 @@ String getUniqueSSID()
 {
   uint64_t chipid = ESP.getEfuseMac();
   char buf[32];
-  snprintf(buf, sizeof(buf), "%s-%04X", NAME, (uint16_t)(chipid & 0xFFFF));
+  snprintf(buf, sizeof(buf), "%s-%08llX", NAME, (uint16_t)(chipid & 0xFFFF));
   return String(buf);
 }
 
@@ -172,14 +172,6 @@ static bool readExactly(uint8_t *dst, size_t n)
   return true;
 }
 
-// void onBrightness(int16_t level)
-// {
-//   Serial.printf("Brightness Level: %u\n", level);
-// }
-// void onMovement(float x, float y)
-// {
-//   Serial.printf("Movement: %.4f, %.4f\n", x, y);
-// }
 void onCamera(float x, float y)
 {
   Serial.printf("Camera: %.4f, %.4f\n", x, y);
@@ -203,6 +195,7 @@ static void init_mic()
 
   Serial.println("Microphone: init successful");
 }
+
 /**
  * @brief Reads audio data from the I2S microphone.
  *
@@ -260,15 +253,13 @@ void setup()
 
   init_camera();
   init_ap();
-
-  irLed.begin();
-  motorControl.begin();
-  
-
 #ifdef audio_enabled
   init_mic();
 #endif
 
+  irLed.begin();
+  motorControl.begin();
+  
   udp.begin(UDP_PORT);
   Serial.printf("UDP control on %s:%u\n", WiFi.softAPIP().toString().c_str(), UDP_PORT);
 
@@ -385,14 +376,4 @@ void loop()
   default:
     break;
   }
-  static unsigned long lastPrint = 0;
-  if (millis() - lastPrint > 500) {
-
-      long countM1 = encoderM1.getCount();
-      long countM2 = encoderM2.getCount();
-
-      Serial.printf("Counts → M1: %ld, M2: %ld\n", countM1, countM2);
-      lastPrint = millis();
-  }
-
 }
