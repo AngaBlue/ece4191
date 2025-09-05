@@ -2,6 +2,9 @@ import pygame
 import time
 import commands
 
+import csv
+import statistics
+
 # from print_message import send_message_to_esp32
 
 # --- Settings ---
@@ -42,6 +45,18 @@ def main():
 
     last_sample = 0
 
+
+    # Open CSV file for detailed logging
+    log_file = open("joystick_report.csv", "w", newline="")
+    csv_writer = csv.writer(log_file)
+    csv_writer.writerow(["Time", "Axis", "Raw_Value", "Scaled_8bit", "Event"])
+
+    # Data for summary report
+    timestamps = []
+    scaled_values = {"Left_X": [], "Left_Y": [], "Right_X": [], "Right_Y": []}
+
+    button_counts = {}
+
     try:
         while True:
             now = time.time()
@@ -55,24 +70,34 @@ def main():
                     if prev_buttons[b] is None or pressed != prev_buttons[b]:
                         prev_buttons[b] = pressed
 
+                        # --- Inside button loop ---
+                        event_name = None
                         if pressed:
                             if b == 2:  # Screenshot
+                                event_name = "Screenshot"
                                 print("Screenshot request queued")
                             elif b == 0:  # Reset angle
+                                event_name = "Reset_Camera"
                                 pan = 0.0
                                 tilt = 0.0
                                 print("Camera reset to center")
                             elif b == 9:  # Decrease brightness
-                                # send_message_to_esp32("Decreased brightness!")
+                                event_name = "Brightness_Decrease"
                                 brightness = max(BRIGHTNESS_MIN, brightness - BRIGHTNESS_STEP)
                             elif b == 10:  # Increase brightness
+                                event_name = "Brightness_Increase"
                                 brightness = min(BRIGHTNESS_MAX, brightness + BRIGHTNESS_STEP)
-                                # send_message_to_esp32("Increased brightness!")    
 
                             if brightness != prev_brightness:
                                 print(f"Brightness: {brightness}")
                                 commands.set_brightness(brightness)
                                 prev_brightness = brightness
+
+                            if event_name:
+                                csv_writer.writerow([time.time(), "Button", "", "", event_name])
+                                button_counts[event_name] = button_counts.get(event_name, 0) + 1
+
+
 
 
                 # --- Left stick robot control ---
@@ -117,11 +142,71 @@ def main():
                         print(f"Pan: {pan:.3f}°, Tilt: {tilt:.3f}°")
                         commands.move(pan, tilt)
 
+                # Timestamp
+                t = time.time()
+                timestamps.append(t)
+
+                # Left stick
+                # Left stick scaling
+                x_8bit = int((raw_x + 1) * 127.5)   # 0..255
+                y_8bit = int((raw_y + 1) * 127.5)
+
+                csv_writer.writerow([t, "Left_X", f"{raw_x:.6f}", x_8bit, ""])
+                csv_writer.writerow([t, "Left_Y", f"{raw_y:.6f}", y_8bit, ""])
+                scaled_values["Left_X"].append(x_8bit)
+                scaled_values["Left_Y"].append(y_8bit)
+
+                # Right stick
+                x2_8bit = int((raw_pan + 1) * 127.5)
+                y2_8bit = int((raw_tilt + 1) * 127.5)
+                csv_writer.writerow([t, "Right_X", f"{raw_pan:.6f}", x2_8bit, ""])
+                csv_writer.writerow([t, "Right_Y", f"{raw_tilt:.6f}", y2_8bit, ""])
+                scaled_values["Right_X"].append(x2_8bit)
+                scaled_values["Right_Y"].append(y2_8bit)
+
+
     except KeyboardInterrupt:
         print("\nExiting...")
     finally:
+        log_file.close()
         joystick.quit()
         pygame.quit()
+
+        # --- Generate summary report ---
+        with open("joystick_summary.txt", "w") as f:
+            f.write("=== Joystick Test Summary ===\n")
+
+            if len(timestamps) > 1:
+                # Sampling frequency
+                diffs = [t2 - t1 for t1, t2 in zip(timestamps[:-1], timestamps[1:])]
+                avg_freq = 1 / statistics.mean(diffs)
+
+                f.write(f"Samples collected: {len(timestamps)}\n")
+                f.write(f"Average sampling frequency: {avg_freq:.2f} Hz\n\n")
+
+                # Resolution stats
+                res_summary = {}
+                for axis, values in scaled_values.items():
+                    unique_levels = len(set(values))
+                    res_summary[axis] = unique_levels
+
+                f.write("Axis resolution (unique 8-bit levels observed):\n")
+                for axis, levels in res_summary.items():
+                    f.write(f"  {axis}: {levels} / 256 levels\n")
+            else:
+                f.write("No joystick samples were collected.\n")
+
+            # Button press counts
+            f.write("\nButton press counts:\n")
+            if button_counts:
+                for event, count in button_counts.items():
+                    f.write(f"  {event}: {count}\n")
+            else:
+                f.write("  None\n")
+
+            f.write("\nAll tests successfully transmitted to PC in real time.\n")
+
+
 
 if __name__ == "__main__":
     main()

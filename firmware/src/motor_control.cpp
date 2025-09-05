@@ -3,12 +3,6 @@
 #include "motor_control.h"
 #include "pins.h"
 
-// PWM channel definitions
-constexpr int M1_IN1_CH = 0;
-constexpr int M1_IN2_CH = 1;
-constexpr int M2_IN1_CH = 2;
-constexpr int M2_IN2_CH = 3;
-
 // PWM configuration
 constexpr int PWM_FREQ_HZ = 20000;
 constexpr int PWM_RES_BITS = 8;
@@ -16,11 +10,11 @@ constexpr int PWM_RES_BITS = 8;
 void MotorControl::begin() {
     setupPWM();
 
-    // Initialize encoders
-    encoderM1.begin();
-    encoderM2.begin();
+    // // Initialize encoders
+    // encoderM1.begin();
+    // encoderM2.begin();
 
-    lastVelocityTime = millis();
+    // lastVelocityTime = millis();
 }
 
 void MotorControl::setupPWM() {
@@ -84,11 +78,24 @@ void MotorControl::setVelocity(float leftNormalized, float rightNormalized) {
     int pwmM2 = pidM2.update(rightNormalized * MAX_RPM, velocityRPM_M2);
 
     // Apply PWM to channels
-    applyPWM(M1_IN1_CH, M1_IN2_CH, pwmM1, leftNormalized);
-    applyPWM(M2_IN1_CH, M2_IN2_CH, pwmM2, rightNormalized);
+    applyPWM(PIN_M1_IN1,PIN_M1_IN2, pwmM1, leftNormalized);
+    applyPWM(PIN_M2_IN1,PIN_M2_IN2, pwmM2, rightNormalized);
 
     Serial.printf("Set velocities L: %.2f R: %.2f, PWM L: %d R: %d\n",
                   leftNormalized, rightNormalized, pwmM1, pwmM2);
+}
+
+// New open-loop mode (direct PWM test)
+void MotorControl::setVelocityOpenLoop(float leftNormalized, float rightNormalized) {
+    // Map -1.0..1.0 normalized input → 0..255 PWM
+    int pwmM1 = (int)(fabs(leftNormalized) * 255);
+    int pwmM2 = (int)(fabs(rightNormalized) * 255);
+
+    applyPWM(PIN_M1_IN1,PIN_M1_IN2, pwmM1, leftNormalized);
+    applyPWM(PIN_M2_IN1,PIN_M2_IN2, pwmM2, rightNormalized);
+
+    Serial.printf("[Open-loop] L: %.2f → PWM %d, R: %.2f → PWM %d\n",
+                  leftNormalized, pwmM1, rightNormalized, pwmM2);
 }
 
 float MotorControl::getVelocityM1() const { return velocityRPM_M1; }

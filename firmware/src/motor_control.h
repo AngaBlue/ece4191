@@ -7,12 +7,13 @@ class MotorControl {
 public:
     void begin();
     void updateVelocity();
+    void setVelocityOpenLoop(float leftNormalized, float rightNormalized); // direct PWM test mode
     void setVelocity(float left_normalized, float right_normalized);
     float getVelocityM1() const;
     float getVelocityM2() const;
 
 private:
-    static constexpr float CPR_GEARBOX = 2400.0f; // 50*48
+    static constexpr float CPR_GEARBOX = 50*380;
     static constexpr float MAX_RPM = 100.0f;
 
     unsigned long lastVelocityTime = 0;

@@ -6,6 +6,7 @@
 #include "pins.h"
 #include "config.h"
 #include "motor_control.h"
+#include "pwm_led.h"
 
 RTSPServer rtspServer;
 WiFiUDP udp;
@@ -16,6 +17,7 @@ int quality;
 TaskHandle_t videoTaskHandle = NULL;
 
 MotorControl motorControl;
+PwmLed irLed(PIN_IR_LED);
 
 // Audio
 #ifdef audio_enabled
@@ -170,10 +172,10 @@ static bool readExactly(uint8_t *dst, size_t n)
   return true;
 }
 
-void onBrightness(int16_t level)
-{
-  Serial.printf("Brightness Level: %u\n", level);
-}
+// void onBrightness(int16_t level)
+// {
+//   Serial.printf("Brightness Level: %u\n", level);
+// }
 // void onMovement(float x, float y)
 // {
 //   Serial.printf("Movement: %.4f, %.4f\n", x, y);
@@ -239,11 +241,17 @@ void onMovement(float translation, float rotation) {
     float left  = constrain(translation - rotation, -1.0f, 1.0f);
     float right = constrain(translation + rotation, -1.0f, 1.0f);
 
-    motorControl.setVelocity(left, right);
+    motorControl.setVelocityOpenLoop(left, right);
 
     Serial.printf("[UDP] Movement command: T=%.2f R=%.2f -> L=%.2f R=%.2f\n",
                   translation, rotation, left, right);
 }
+
+void onBrightness(int16_t level)
+{
+  Serial.printf("Brightness Level: %u\n", level);
+}
+
 
 void setup()
 {
@@ -252,6 +260,11 @@ void setup()
 
   init_camera();
   init_ap();
+
+  irLed.begin();
+  motorControl.begin();
+  
+
 #ifdef audio_enabled
   init_mic();
 #endif
@@ -345,6 +358,7 @@ void loop()
       int16_t level;
       memcpy(&level, payload, 2);
       onBrightness(level);
+      irLed.onBrightness(level);
     }
     break;
 

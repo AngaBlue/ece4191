@@ -24,6 +24,6 @@ def move(x: float, y: float, mid: int = 0):
     payload = struct.pack("<ff", float(x), float(y))
     send_packet(0x02, payload, mid)
 
-def camera(x: float, y: float, mid: int = 0):
-    payload = struct.pack("<ff", float(x), float(y))
+def camera(pan: float, tilt: float, mid: int = 0):
+    payload = struct.pack("<ff", float(pan), float(tilt))
     send_packet(0x03, payload, mid)
