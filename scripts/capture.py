@@ -3,18 +3,24 @@ import time
 import argparse
 import cv2
 from FrameBus import FrameBus
+from discover import discover_esp32_ip
 
 
 def main():
     ap = argparse.ArgumentParser()
-    ap.add_argument("--url", default="rtsp://192.168.137.161:554/",
-                    help="RTSP URL (try /mjpeg/1 if needed)")
     ap.add_argument("--out", default="images", help="Folder to save images")
     args = ap.parse_args()
 
     os.makedirs(args.out, exist_ok=True)
 
-    bus = FrameBus(args.url)
+    ip = discover_esp32_ip()
+    if not ip:
+        raise RuntimeError("ESP32 not found on hotspot subnet")
+    print("ESP32 IP:", ip)
+
+    rtsp_url = f"rtsp://{ip}:554/"
+
+    bus = FrameBus(rtsp_url)
     bus.start()
 
     print("Press SPACE to capture an image, ESC or Q to exit.")
