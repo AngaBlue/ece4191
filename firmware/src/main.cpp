@@ -5,6 +5,8 @@
 #include "esp_camera.h"
 #include "pins.h"
 #include "config.h"
+#include "motor_control.h"
+#include "pwm_led.h"
 
 RTSPServer rtspServer;
 WiFiUDP udp;
@@ -13,6 +15,9 @@ char packetBuffer[255];
 // RTSP
 int quality;
 TaskHandle_t videoTaskHandle = NULL;
+
+MotorControl motorControl;
+PwmLed irLed(PIN_IR_LED);
 
 // Audio
 #ifdef audio_enabled
@@ -125,7 +130,6 @@ void sendVideo(void *pvParameters)
   }
 }
 
-
 enum Command : uint8_t
 {
   CMD_BRIGHTNESS = 0x01,
@@ -168,14 +172,6 @@ static bool readExactly(uint8_t *dst, size_t n)
   return true;
 }
 
-void onBrightness(int16_t level)
-{
-  Serial.printf("Brightness Level: %u\n", level);
-}
-void onMovement(float x, float y)
-{
-  Serial.printf("Movement: %.4f, %.4f\n", x, y);
-}
 void onCamera(float x, float y)
 {
   Serial.printf("Camera: %.4f, %.4f\n", x, y);
@@ -233,6 +229,23 @@ void sendAudio(void *pvParameters)
 }
 #endif
 
+// ===== Movement handler =====
+void onMovement(float translation, float rotation) {
+    float left  = constrain(translation - rotation, -1.0f, 1.0f);
+    float right = constrain(translation + rotation, -1.0f, 1.0f);
+
+    motorControl.setVelocityOpenLoop(left, right);
+
+    Serial.printf("[UDP] Movement command: T=%.2f R=%.2f -> L=%.2f R=%.2f\n",
+                  translation, rotation, left, right);
+}
+
+void onBrightness(int16_t level)
+{
+  Serial.printf("Brightness Level: %u\n", level);
+}
+
+
 void setup()
 {
   Serial.begin(115200);
@@ -244,6 +257,9 @@ void setup()
   init_mic();
 #endif
 
+  irLed.begin();
+  motorControl.begin();
+  
   udp.begin(UDP_PORT);
   Serial.printf("UDP control on %s:%u\n", WiFi.softAPIP().toString().c_str(), UDP_PORT);
 
@@ -333,6 +349,7 @@ void loop()
       int16_t level;
       memcpy(&level, payload, 2);
       onBrightness(level);
+      irLed.onBrightness(level);
     }
     break;
 
@@ -342,7 +359,7 @@ void loop()
       float x, y;
       memcpy(&x, payload + 0, 4);
       memcpy(&y, payload + 4, 4);
-      onMovement(x, y);
+      onMovement(x, y);  
     }
     break;
 

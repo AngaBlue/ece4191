@@ -1,0 +1,17 @@
+=== Joystick Test Summary ===
+Samples collected: 523
+Average sampling frequency: 19.83 Hz
+
+Axis resolution (unique 8-bit levels observed):
+  Left_X: 76 / 256 levels
+  Left_Y: 61 / 256 levels
+  Right_X: 72 / 256 levels
+  Right_Y: 62 / 256 levels
+
+Button press counts:
+  Brightness_Increase: 33
+  Brightness_Decrease: 35
+  Screenshot: 5
+  Reset_Camera: 4
+
+All tests successfully transmitted to PC in real time.

@@ -74,15 +74,15 @@
  * Motors
  */
 #ifdef esp32s3cam_lonelybinary
-#define PIN_M1_IN1 45
+#define PIN_M1_IN1 47
 #define PIN_M1_IN2 48
-#define PIN_M1_ENCA 19
-#define PIN_M1_ENCB 47
+#define PIN_M1_ENCA 20
+#define PIN_M1_ENCB 21
 
 #define PIN_M2_IN1 39
-#define PIN_M2_IN2 40
-#define PIN_M2_ENCA 35
-#define PIN_M2_ENCB 36
+#define PIN_M2_IN2 4
+#define PIN_M2_ENCA 45
+#define PIN_M2_ENCB 38
 #endif
 
 /**
@@ -90,5 +90,5 @@
  */
 #ifdef esp32s3cam_lonelybinary
 #define PIN_LED_WS2812 48
-#define PIN_IR_LED 21
+#define PIN_IR_LED 19
 #endif
