@@ -80,7 +80,7 @@
 #define PIN_M1_ENCB 21
 
 #define PIN_M2_IN1 39
-#define PIN_M2_IN2 4
+#define PIN_M2_IN2 40
 #define PIN_M2_ENCA 45
 #define PIN_M2_ENCB 38
 #endif
