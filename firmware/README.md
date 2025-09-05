@@ -11,5 +11,5 @@ Currently, I have been able to get the firmware uploaded via UART.
 To read the video stream over RTSP, I recommend using `ffmpeg`:
 
 ```bash
-ffplay -rtsp_transport udp -fflags nobuffer -flags low_delay -framedrop -fflags +discardcorrupt -probesize 32 -analyzeduration 0 -use_wallclock_as_timestamps 1 rtsp://192.168.4.1:554/
+ffplay -rtsp_transport udp -probesize 32 -analyzeduration 0 -sync ext -vf setpts=0 -fflags nobuffer -fflags discardcorrupt -flags low_delay -framedrop -avioflags direct rtsp://192.168.137.161:554/
 ```
