@@ -1,7 +1,7 @@
 import socket, struct
 
-ESP_IP = "192.168.4.1"
-PORT = 8484
+ESP_IP = "192.168.137.161"
+PORT = 65001
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 

@@ -1,49 +1,58 @@
-import cv2
 import os
 import time
+import argparse
+import cv2
+from FrameBus import FrameBus
+from discover import discover_esp32_ip
 
-# RTSP stream URL
-RTSP_URL = "rtsp://192.168.4.1:554/mjpeg/1"
-
-# Folder where images will be saved
-SAVE_DIR = "images"
-os.makedirs(SAVE_DIR, exist_ok=True)
 
 def main():
-    cap = cv2.VideoCapture(RTSP_URL)
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", default="images", help="Folder to save images")
+    args = ap.parse_args()
 
-    if not cap.isOpened():
-        print("Error: Unable to open RTSP stream")
-        return
+    os.makedirs(args.out, exist_ok=True)
 
-    print("Press SPACE to capture an image, ESC to exit.")
+    ip = discover_esp32_ip()
+    if not ip:
+        raise RuntimeError("ESP32 not found on hotspot subnet")
+    print("ESP32 IP:", ip)
 
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            print("Failed to grab frame")
-            break
+    rtsp_url = f"rtsp://{ip}:554/"
 
-        # Show the frame
-        cv2.imshow("RTSP Stream", frame)
+    bus = FrameBus(rtsp_url)
+    bus.start()
 
-        # Wait for a key press for 1ms
-        key = cv2.waitKey(1) & 0xFF
+    print("Press SPACE to capture an image, ESC or Q to exit.")
+    win = "RTSP Stream (FrameBus)"
+    cv2.namedWindow(win, cv2.WINDOW_NORMAL)
 
-        # Space bar pressed
-        if key == 32:
-            timestamp = time.strftime("%Y%m%d_%H%M%S")
-            filename = os.path.join(SAVE_DIR, f"frame_{timestamp}.jpg")
-            cv2.imwrite(filename, frame)
-            print(f"Saved {filename}")
+    try:
+        last_frame = None
+        while True:
+            frame = bus.latest()  # freshest frame (or None while connecting)
+            if frame is not None:
+                last_frame = frame
+                cv2.imshow(win, frame)
+            else:
+                # no frame yet; avoid busy loop
+                cv2.waitKey(10)
 
-        # ESC pressed
-        elif key == 27:
-            print("Exiting...")
-            break
+            key = cv2.waitKey(1) & 0xFF
+            if key in (27, ord('q')):  # ESC or 'q'
+                print("Exiting…")
+                break
+            if key == 32 and last_frame is not None:  # SPACE
+                ts = time.strftime("%Y%m%d_%H%M%S")
+                ms = int((time.time() % 1) * 1000)
+                path = os.path.join(args.out, f"frame_{ts}_{ms:03d}.jpg")
+                cv2.imwrite(path, last_frame)
+                print(f"Saved {path}")
 
-    cap.release()
-    cv2.destroyAllWindows()
+    finally:
+        bus.stop()
+        cv2.destroyAllWindows()
+
 
 if __name__ == "__main__":
     main()

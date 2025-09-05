@@ -1,11 +1,13 @@
 #include "esp_camera.h"
+#include <WiFi.h>
 
 /**
- * Miscellaneous
+ * WiFi
  */
 static const char *NAME = "ESP32S3-R06";
-static const char *AP_SSID = NAME;
-static const char *AP_PASS = "12345678";
+static const char *HOTSPOT_SSID = "ANGUS-DESKTOP";
+static const char *HOTSPOT_PASS = "12345678";
+static const unsigned long WIFI_RETRY_MS = 5000;
 
 /**
  * Camera
@@ -22,4 +24,4 @@ static const char *AP_PASS = "12345678";
 /**
  * UDP
  */
-#define UDP_PORT 8484
+#define UDP_PORT 65001
