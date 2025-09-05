@@ -3,7 +3,7 @@ import os
 import time
 
 # RTSP stream URL
-RTSP_URL = "rtsp://192.168.4.1:554/mjpeg/1"
+RTSP_URL = "rtsp://192.168.137.161:554/mjpeg/1"
 
 # Folder where images will be saved
 SAVE_DIR = "images"

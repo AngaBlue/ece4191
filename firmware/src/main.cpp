@@ -19,18 +19,17 @@ TaskHandle_t videoTaskHandle = NULL;
 MotorControl motorControl;
 PwmLed irLed(PIN_IR_LED);
 
-// Audio
 #ifdef audio_enabled
 #include <ESP_I2S.h>
-// I2SClass object for I2S communication
 I2SClass I2S;
-
-// Audio variables
-int sampleRate = 48000;          // Sample rate in Hz
-const size_t sampleBytes = 1024; // Sample buffer size (in bytes)
-int16_t *sampleBuffer = NULL;    // Pointer to the sample buffer
+int sampleRate = 48000;
+const size_t sampleBytes = 1024;
+int16_t *sampleBuffer = NULL;
 TaskHandle_t audioTaskHandle = NULL;
 #endif
+
+static bool networkReady = false;
+static unsigned long lastWifiAttempt = 0;
 
 void hang()
 {
@@ -78,33 +77,6 @@ void init_camera()
   Serial.println("Camera: init successful");
 }
 
-String getUniqueSSID()
-{
-  uint64_t chipid = ESP.getEfuseMac();
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%s-%08llX", NAME, (uint16_t)(chipid & 0xFFFF));
-  return String(buf);
-}
-
-void init_ap()
-{
-  WiFi.mode(WIFI_AP);
-  WiFi.setSleep(false);
-  String ssid = getUniqueSSID();
-  bool ok = WiFi.softAP(ssid, AP_PASS, 1, 0, 1);
-  if (!ok)
-  {
-    Serial.println("AP: init failed");
-    hang();
-  }
-  Serial.print("AP SSID: ");
-  Serial.println(ssid);
-  Serial.print("AP Pass: ");
-  Serial.println(AP_PASS);
-  Serial.print("AP IP:   ");
-  Serial.println(WiFi.softAPIP());
-}
-
 void getFrameQuality()
 {
   sensor_t *s = esp_camera_sensor_get();
@@ -125,7 +97,6 @@ void sendVideo(void *pvParameters)
         esp_camera_fb_return(fb);
       }
     }
-
     vTaskDelay(1);
   }
 }
@@ -137,13 +108,6 @@ enum Command : uint8_t
   CMD_CAMERA = 0x03,
 };
 
-/**
- * @brief Calculates the checksum for a given buffer.
- *
- * @param buf The buffer.
- * @param n The length of the buffer.
- * @return The checksum.
- */
 static uint8_t checksum(const uint8_t *buf, size_t n)
 {
   uint16_t s = 0;
@@ -152,13 +116,6 @@ static uint8_t checksum(const uint8_t *buf, size_t n)
   return s & 0xFF;
 }
 
-/**
- * @brief Reads an exact amount of bytes into a destination buffer.
- *
- * @param dst The destination buffer.
- * @param n The number of bytes.
- * @return Whether the bytes were successfully read.
- */
 static bool readExactly(uint8_t *dst, size_t n)
 {
   size_t read = 0;
@@ -180,71 +137,121 @@ void onCamera(float x, float y)
 #ifdef audio_enabled
 static void init_mic()
 {
-  bool res;
   // I2S mic and I2S amp can share same I2S channel
   I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1); // BCLK/SCK, LRCLK/WS, SDOUT, SDIN, MCLK
-  res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
+  bool res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
   if (sampleBuffer == NULL)
     sampleBuffer = (int16_t *)malloc(sampleBytes);
 
-  if (res != true)
+  if (!res)
   {
     Serial.println("Microphone: init failed");
     hang();
   }
-
   Serial.println("Microphone: init successful");
 }
 
-/**
- * @brief Reads audio data from the I2S microphone.
- *
- * @return The number of bytes read.
- */
 static size_t micInput()
 {
-  // read esp mic
   size_t bytesRead = 0;
   bytesRead = I2S.readBytes((char *)sampleBuffer, sampleBytes);
   return bytesRead;
 }
-/**
- * @brief Task to send audio data via RTP.
- */
+
 void sendAudio(void *pvParameters)
 {
   while (true)
   {
-    size_t bytesRead = 0;
     if (rtspServer.readyToSendAudio())
     {
-      bytesRead = micInput();
+      size_t bytesRead = micInput();
       if (bytesRead)
         rtspServer.sendRTSPAudio(sampleBuffer, bytesRead);
       else
-        Serial.println("No audio Recieved");
+        Serial.println("No audio received");
     }
-    vTaskDelay(pdMS_TO_TICKS(1)); // Delay for 1 second
+    vTaskDelay(pdMS_TO_TICKS(1));
   }
 }
 #endif
 
 // ===== Movement handler =====
-void onMovement(float translation, float rotation) {
-    float left  = constrain(translation - rotation, -1.0f, 1.0f);
-    float right = constrain(translation + rotation, -1.0f, 1.0f);
-
-    motorControl.setVelocityOpenLoop(left, right);
-
-    Serial.printf("[UDP] Movement command: T=%.2f R=%.2f -> L=%.2f R=%.2f\n",
-                  translation, rotation, left, right);
+void onMovement(float translation, float rotation)
+{
+  float left = constrain(translation - rotation, -1.0f, 1.0f);
+  float right = constrain(translation + rotation, -1.0f, 1.0f);
+  motorControl.setVelocityOpenLoop(left, right);
+  Serial.printf("[UDP] Movement command: T=%.2f R=%.2f -> L=%.2f R=%.2f\n",
+                translation, rotation, left, right);
 }
 
 void onBrightness(int16_t level)
 {
-  Serial.printf("Brightness Level: %u\n", level);
+  Serial.printf("Brightness Level: %d\n", (int)level);
+  irLed.onBrightness(level);
 }
 
+// ====== Wi-Fi (STA) helpers ======
+static void printIPAndStartNetServicesIfNeeded()
+{
+  if (WiFi.status() != WL_CONNECTED)
+    return;
+
+  IPAddress ip = WiFi.localIP();
+  if (!networkReady)
+  {
+    // Start UDP + RTSP only once we have a valid IP
+    udp.begin(UDP_PORT);
+
+    getFrameQuality();
+#ifdef audio_enabled
+    rtspServer.transport = RTSPServer::VIDEO_AND_AUDIO;
+#else
+    rtspServer.transport = RTSPServer::VIDEO_ONLY;
+#endif
+
+    if (rtspServer.init())
+    {
+      Serial.printf("RTSP server started. Connect to rtsp://%s:554/\n", ip.toString().c_str());
+    }
+    else
+    {
+      Serial.println("Failed to start RTSP server");
+    }
+    networkReady = true;
+  }
+
+  static bool printed = false;
+  if (!printed)
+  {
+    Serial.print("Wi-Fi connected. IP: ");
+    Serial.println(ip);
+    printed = true;
+  }
+}
+
+static void maintainWiFi()
+{
+  // Already connected
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    printIPAndStartNetServicesIfNeeded();
+    return;
+  }
+
+  // Not connected — allow services to remain; they will resume once IP is back.
+  networkReady = false; // forces services to re-announce next time we connect
+
+  unsigned long now = millis();
+  if (now - lastWifiAttempt >= WIFI_RETRY_MS)
+  {
+    Serial.printf("Wi-Fi: attempting to connect to \"%s\"...\n", HOTSPOT_SSID);
+    WiFi.disconnect(true, true);
+    delay(100);
+    WiFi.begin(HOTSPOT_SSID, HOTSPOT_PASS);
+    lastWifiAttempt = now;
+  }
+}
 
 void setup()
 {
@@ -252,45 +259,43 @@ void setup()
   Serial.println("Booted!");
 
   init_camera();
-  init_ap();
-#ifdef audio_enabled
-  init_mic();
-#endif
-
   irLed.begin();
   motorControl.begin();
-  
-  udp.begin(UDP_PORT);
-  Serial.printf("UDP control on %s:%u\n", WiFi.softAPIP().toString().c_str(), UDP_PORT);
 
-  getFrameQuality();
-  rtspServer.maxRTSPClients = 1;
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+  WiFi.setHostname(NAME);
 
-#ifdef audio_enabled
-  rtspServer.transport = RTSPServer::VIDEO_AND_AUDIO;
-  xTaskCreate(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle);
-#else
-  rtspServer.transport = RTSPServer::VIDEO_ONLY;
-#endif
+  // Start video task immediately; it will send frames when RTSP is ready
   xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
 
-  if (rtspServer.init())
-  {
-    Serial.printf("RTSP server started successfully using default values, Connect to rtsp://%s:554/\n", WiFi.softAPIP().toString().c_str());
-  }
-  else
-  {
-    Serial.println("Failed to start RTSP server");
-  }
+#ifdef audio_enabled
+  init_mic();
+  xTaskCreate(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle);
+#endif
+
+  // Kick off the first connection attempt right away
+  lastWifiAttempt = millis() - WIFI_RETRY_MS;
+  maintainWiFi();
 }
 
 void loop()
 {
+  // Keep trying to connect (or reconnect) in the background
+  maintainWiFi();
+
+  // If not connected yet, just return; control packets require network
+  if (WiFi.status() != WL_CONNECTED)
+  {
+    delay(10);
+    return;
+  }
+
+  // ==== UDP control protocol ====
   int pktLen = udp.parsePacket();
   if (pktLen <= 0)
     return;
 
-  // Minimal header: CMD, LEN, ID
   uint8_t hdr[3];
   if (!readExactly(hdr, sizeof(hdr)))
   {
@@ -300,14 +305,13 @@ void loop()
   }
   uint8_t cmd = hdr[0], len = hdr[1], id = hdr[2];
 
-  // Read payload + checksum
   if (udp.available() < (int)len + 1)
   {
     while (udp.available())
       udp.read();
     return;
   }
-  uint8_t payload[16]; // enough for our current commands
+  uint8_t payload[16];
   if (len > sizeof(payload))
   {
     while (udp.available())
@@ -320,7 +324,6 @@ void loop()
       udp.read();
     return;
   }
-
   uint8_t chk = 0;
   if (!readExactly(&chk, 1))
   {
@@ -329,18 +332,13 @@ void loop()
     return;
   }
 
-  // Verify checksum
-  uint8_t calc = 0;
-  {
-    uint8_t tmp[3 + 16];
-    memcpy(tmp, hdr, 3);
-    memcpy(tmp + 3, payload, len);
-    calc = checksum(tmp, 3 + len);
-  }
+  uint8_t tmp[3 + 16];
+  memcpy(tmp, hdr, 3);
+  memcpy(tmp + 3, payload, len);
+  uint8_t calc = checksum(tmp, 3 + len);
   if (chk != calc)
-    return; // drop silently or log
+    return;
 
-  // Dispatch
   switch (cmd)
   {
   case CMD_BRIGHTNESS:
@@ -349,7 +347,6 @@ void loop()
       int16_t level;
       memcpy(&level, payload, 2);
       onBrightness(level);
-      irLed.onBrightness(level);
     }
     break;
 
@@ -359,7 +356,7 @@ void loop()
       float x, y;
       memcpy(&x, payload + 0, 4);
       memcpy(&y, payload + 4, 4);
-      onMovement(x, y);  
+      onMovement(x, y);
     }
     break;
 
