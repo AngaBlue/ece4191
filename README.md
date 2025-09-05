@@ -25,7 +25,7 @@ Start a local hotspot on Windows by opening `Settings > Network & internet > Mob
 
 Start the mobile hotspot.  This will allow you to stay connected to the internet while controlling the robot.
 
-To program the robot to use your hotspot, open `/firmware/include/config.h` and modify `HOTSPOT_SSID` and `HOTSPOT_PASS` to match your Network Properties.  Once set, build and upload the code.
+To program the robot to use your hotspot, open `/firmware/include/config.h` and modify `HOTSPOT_SSID` and `HOTSPOT_PASS` to match your Network Properties.  Once set, build and upload the code (more instructions on this process can be found in `/firmware/README.md`).
 
 As the MCU may be assigned a new IP on each connection, use the script in `/scripts/discover.py` to programmatically find the IP of the MCU on startup.
 
@@ -39,3 +39,12 @@ ffplay -rtsp_transport udp -probesize 32 -analyzeduration 0 -sync ext -vf setpts
 ```
 
 You will need FFMPEG installed, which can be done by running `winget install ffmpeg`.
+
+## Operation Commands
+Once again, to reduce latency, commands are sent as single packets over UDP.  This does mean that commands may be dropped if the connection is poor.  Each command is variable length set of packed bytes in the following format:
+
+```
+[CMD:1][LEN:1][ID:1][PAY:LEN][CHK:1]
+```
+
+This yields a 3 byte header, variable length payload and a 1 byte checksum.  Functions are provided in `/scripts/commands.py` to simplify sending these commands to the MCU.
