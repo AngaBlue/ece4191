@@ -385,4 +385,14 @@ void loop()
   default:
     break;
   }
+  static unsigned long lastPrint = 0;
+  if (millis() - lastPrint > 500) {
+
+      long countM1 = encoderM1.getCount();
+      long countM2 = encoderM2.getCount();
+
+      Serial.printf("Counts → M1: %ld, M2: %ld\n", countM1, countM2);
+      lastPrint = millis();
+  }
+
 }

@@ -87,6 +87,7 @@ void MotorControl::setVelocity(float leftNormalized, float rightNormalized) {
 
 // New open-loop mode (direct PWM test)
 void MotorControl::setVelocityOpenLoop(float leftNormalized, float rightNormalized) {
+    
     // Map -1.0..1.0 normalized input → 0..255 PWM
     int pwmM1 = (int)(fabs(leftNormalized) * 255);
     int pwmM2 = (int)(fabs(rightNormalized) * 255);
@@ -94,8 +95,8 @@ void MotorControl::setVelocityOpenLoop(float leftNormalized, float rightNormaliz
     applyPWM(PIN_M1_IN1,PIN_M1_IN2, pwmM1, leftNormalized);
     applyPWM(PIN_M2_IN1,PIN_M2_IN2, pwmM2, rightNormalized);
 
-    Serial.printf("[Open-loop] L: %.2f → PWM %d, R: %.2f → PWM %d\n",
-                  leftNormalized, pwmM1, rightNormalized, pwmM2);
+    // Serial.printf("[Open-loop] L: %.2f → PWM %d, R: %.2f → PWM %d\n",
+    //               leftNormalized, pwmM1, rightNormalized, pwmM2);
 }
 
 float MotorControl::getVelocityM1() const { return velocityRPM_M1; }
