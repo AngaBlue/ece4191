@@ -3,3 +3,4 @@ scripts/**/*.png
 scripts/datasets
 scripts/runs
 __pycache__
+venv
