@@ -1,7 +1,6 @@
 // motor_control.h
 #pragma once
 #include "pid_controller.h"
-#include "encoder.h"
 
 class MotorControl {
 public:
