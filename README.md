@@ -48,3 +48,5 @@ Once again, to reduce latency, commands are sent as single packets over UDP.  Th
 ```
 
 This yields a 3 byte header, variable length payload and a 1 byte checksum.  Functions are provided in `/scripts/commands.py` to simplify sending these commands to the MCU.
+
+It is expected the the remote client device should be continually sending commands to the MCU, even if they have not changed.  If no inputs are received after a configurable amount of time, the MCU will assume a connection issue and pause all motor movement.
