@@ -30,6 +30,7 @@ TaskHandle_t audioTaskHandle = NULL;
 
 static bool networkReady = false;
 static unsigned long lastWifiAttempt = 0;
+static unsigned long lastMovementCommand = 0;
 
 void hang()
 {
@@ -253,37 +254,8 @@ static void maintainWiFi()
   }
 }
 
-void setup()
+static void parseControlInputs()
 {
-  Serial.begin(115200);
-  Serial.println("Booted!");
-
-  init_camera();
-  irLed.begin();
-  motorControl.begin();
-
-  WiFi.mode(WIFI_STA);
-  WiFi.setSleep(false);
-  WiFi.setHostname(NAME);
-
-  // Start video task immediately; it will send frames when RTSP is ready
-  xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
-
-#ifdef audio_enabled
-  init_mic();
-  xTaskCreate(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle);
-#endif
-
-  // Kick off the first connection attempt right away
-  lastWifiAttempt = millis() - WIFI_RETRY_MS;
-  maintainWiFi();
-}
-
-void loop()
-{
-  // Keep trying to connect (or reconnect) in the background
-  maintainWiFi();
-
   // If not connected yet, just return; control packets require network
   if (WiFi.status() != WL_CONNECTED)
   {
@@ -356,6 +328,7 @@ void loop()
       float x, y;
       memcpy(&x, payload + 0, 4);
       memcpy(&y, payload + 4, 4);
+      lastMovementCommand = millis();
       onMovement(x, y);
     }
     break;
@@ -372,5 +345,46 @@ void loop()
 
   default:
     break;
+  }
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  Serial.println("Booted!");
+
+  init_camera();
+  irLed.begin();
+  motorControl.begin();
+
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+  WiFi.setHostname(NAME);
+
+  // Start video task immediately; it will send frames when RTSP is ready
+  xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
+
+#ifdef audio_enabled
+  init_mic();
+  xTaskCreate(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle);
+#endif
+
+  // Kick off the first connection attempt right away
+  lastWifiAttempt = millis() - WIFI_RETRY_MS;
+  maintainWiFi();
+}
+
+void loop()
+{
+  // Keep trying to connect (or reconnect) in the background
+  maintainWiFi();
+
+  // Receive and action incoming packets
+  parseControlInputs();
+
+  // Stop movement after no inputs are received
+  unsigned long now = millis();
+  if (now - lastMovementCommand > MOVEMENT_TIMEOUT) {
+      motorControl.setVelocityOpenLoop(0.0f, 0.0f);
   }
 }
