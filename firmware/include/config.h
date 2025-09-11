@@ -25,3 +25,8 @@ static const unsigned long WIFI_RETRY_MS = 5000;
  * UDP
  */
 #define UDP_PORT 65001
+
+/**
+ * Motors
+ */
+#define MOVEMENT_TIMEOUT 200
