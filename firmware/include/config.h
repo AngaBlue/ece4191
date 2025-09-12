@@ -30,3 +30,11 @@ static const unsigned long WIFI_RETRY_MS = 5000;
  * Motors
  */
 #define MOVEMENT_TIMEOUT 200
+
+/**
+ * Servos
+ */
+static constexpr int SERVO_MIN_US = 500;
+static constexpr int SERVO_MAX_US = 2500;
+static constexpr int SERVO_FREQ_HZ = 50;
+static constexpr int SERVO_RANGE_DEG = 270;

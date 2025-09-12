@@ -1,6 +1,6 @@
 import socket, struct
 
-ESP_IP = "192.168.137.161"
+ESP_IP = "192.168.137.83"
 PORT = 65001
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -24,6 +24,6 @@ def move(x: float, y: float, mid: int = 0):
     payload = struct.pack("<ff", float(x), float(y))
     send_packet(0x02, payload, mid)
 
-def camera(pan: float, tilt: float, mid: int = 0):
-    payload = struct.pack("<ff", float(pan), float(tilt))
+def camera(pan: int, tilt: int, mid: int = 0):
+    payload = struct.pack("<ii", int(pan), int(tilt))
     send_packet(0x03, payload, mid)

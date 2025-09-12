@@ -2,6 +2,7 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <ESP32-RTSPServer.h>
+#include <ESP32Servo.h>
 #include "esp_camera.h"
 #include "pins.h"
 #include "config.h"
@@ -11,6 +12,7 @@
 RTSPServer rtspServer;
 WiFiUDP udp;
 char packetBuffer[255];
+Servo servoPan, servoTilt;
 
 // RTSP
 int quality;
@@ -130,11 +132,6 @@ static bool readExactly(uint8_t *dst, size_t n)
   return true;
 }
 
-void onCamera(float x, float y)
-{
-  Serial.printf("Camera: %.4f, %.4f\n", x, y);
-}
-
 #ifdef audio_enabled
 static void init_mic()
 {
@@ -175,6 +172,30 @@ void sendAudio(void *pvParameters)
   }
 }
 #endif
+
+static inline int clampi(int v, int lo, int hi)
+{
+  return v < lo ? lo : (v > hi ? hi : v);
+}
+
+// Map 0..270° → 500..2500 µs (linear)
+static inline int angleToMicros(int deg)
+{
+  deg = clampi(deg, 0, SERVO_RANGE_DEG);
+  return SERVO_MIN_US + (int)((long long)deg * (SERVO_MAX_US - SERVO_MIN_US) / SERVO_RANGE_DEG);
+}
+
+void setPanTiltDegrees(int panDeg, int tiltDeg)
+{
+  servoPan.writeMicroseconds(angleToMicros(panDeg));
+  servoTilt.writeMicroseconds(angleToMicros(tiltDeg));
+}
+
+void onCamera(int pan, int tilt)
+{
+  Serial.printf("[Camera]: %d, %d\n", pan, tilt);
+  setPanTiltDegrees(pan, tilt);
+}
 
 // ===== Movement handler =====
 void onMovement(float translation, float rotation)
@@ -336,10 +357,10 @@ static void parseControlInputs()
   case CMD_CAMERA:
     if (len == 8)
     {
-      float x, y;
-      memcpy(&x, payload + 0, 4);
-      memcpy(&y, payload + 4, 4);
-      onCamera(x, y);
+      int pan, tilt;
+      memcpy(&pan, payload + 0, 4);
+      memcpy(&tilt, payload + 4, 4);
+      onCamera(pan, tilt);
     }
     break;
 
@@ -354,6 +375,23 @@ void setup()
   Serial.println("Booted!");
 
   init_camera();
+
+  // (Optional) make sure LEDC timers are available on ESP32
+  ESP32PWM::allocateTimer(0);
+  ESP32PWM::allocateTimer(1);
+  ESP32PWM::allocateTimer(2);
+  ESP32PWM::allocateTimer(3);
+
+  // Both servos run at 50 Hz and use the same pulse range
+  servoPan.setPeriodHertz(SERVO_FREQ_HZ);
+  servoTilt.setPeriodHertz(SERVO_FREQ_HZ);
+
+  servoPan.attach(PIN_SERVO_PAN, SERVO_MIN_US, SERVO_MAX_US);
+  servoTilt.attach(PIN_SERVO_TILT, SERVO_MIN_US, SERVO_MAX_US);
+
+  // Center at 135° (midpoint of 0..270)
+  setPanTiltDegrees(SERVO_RANGE_DEG / 2, SERVO_RANGE_DEG / 2);
+
   irLed.begin();
   motorControl.begin();
 
@@ -384,7 +422,8 @@ void loop()
 
   // Stop movement after no inputs are received
   unsigned long now = millis();
-  if (now - lastMovementCommand > MOVEMENT_TIMEOUT) {
-      motorControl.setVelocityOpenLoop(0.0f, 0.0f);
+  if (now - lastMovementCommand > MOVEMENT_TIMEOUT)
+  {
+    motorControl.setVelocityOpenLoop(0.0f, 0.0f);
   }
 }

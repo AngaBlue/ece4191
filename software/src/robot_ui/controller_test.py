@@ -12,10 +12,10 @@ BRIGHTNESS_STEP = 1
 BRIGHTNESS_MIN = 0
 BRIGHTNESS_MAX = 6
 
-PAN_MIN = -90
-PAN_MAX = 90
-TILT_MIN = -45
-TILT_MAX = 45
+PAN_MIN = 0
+PAN_MAX = 270
+TILT_MIN = 0
+TILT_MAX = 270
 PAN_STEP = 2
 TILT_STEP = 2
 
@@ -104,18 +104,18 @@ def main():
 
                 # Update pan/tilt if meaningful movement
                 if right_x != 0.0 or right_y != 0.0:
-                    new_pan = pan + right_x * PAN_STEP
+                    new_pan = int(pan + right_x * PAN_STEP)
                     new_pan = max(PAN_MIN, min(PAN_MAX, new_pan))
 
-                    new_tilt = tilt + -right_y * TILT_STEP  # invert Y axis
+                    new_tilt = int(tilt + -right_y * TILT_STEP)  # invert Y axis
                     new_tilt = max(TILT_MIN, min(TILT_MAX, new_tilt))
 
                     # Only print if changed
                     if new_pan != pan or new_tilt != tilt:
                         pan = new_pan
                         tilt = new_tilt
-                        print(f"Pan: {pan:.3f}°, Tilt: {tilt:.3f}°")
-                        commands.move(pan, tilt)
+                        print(f"Pan: {pan:d}, Tilt: {tilt:d}")
+                        commands.camera(pan, tilt)
 
     except KeyboardInterrupt:
         print("\nExiting...")
