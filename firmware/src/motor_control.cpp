@@ -15,16 +15,16 @@ void MotorControl::begin()
 void MotorControl::setupPWM()
 {
     // Attach pins (frequency and resolution set automatically)
-    ledcAttach(PIN_M1_IN1, PWM_FREQ_HZ, PWM_RES_BITS);
-    ledcAttach(PIN_M1_IN2, PWM_FREQ_HZ, PWM_RES_BITS);
-    ledcAttach(PIN_M2_IN1, PWM_FREQ_HZ, PWM_RES_BITS);
-    ledcAttach(PIN_M2_IN2, PWM_FREQ_HZ, PWM_RES_BITS);
+    ledcAttach(PIN_ML_FOR, PWM_FREQ_HZ, PWM_RES_BITS);
+    ledcAttach(PIN_ML_REV, PWM_FREQ_HZ, PWM_RES_BITS);
+    ledcAttach(PIN_MR_FOR, PWM_FREQ_HZ, PWM_RES_BITS);
+    ledcAttach(PIN_MR_REV, PWM_FREQ_HZ, PWM_RES_BITS);
 
     // Initialize PWM to zero
-    ledcWrite(PIN_M1_IN1, 0);
-    ledcWrite(PIN_M1_IN2, 0);
-    ledcWrite(PIN_M2_IN1, 0);
-    ledcWrite(PIN_M2_IN2, 0);
+    ledcWrite(PIN_ML_FOR, 0);
+    ledcWrite(PIN_ML_REV, 0);
+    ledcWrite(PIN_MR_FOR, 0);
+    ledcWrite(PIN_MR_REV, 0);
 }
 
 void MotorControl::applyPWM(int pinFwd, int pinRev, int pwmValue, float direction)
@@ -55,8 +55,8 @@ void MotorControl::setVelocity(float leftNormalized, float rightNormalized)
     int pwmM2 = pidM2.update(rightNormalized * MAX_RPM, velocityRPM_M2);
 
     // Apply PWM to channels
-    applyPWM(PIN_M1_IN1, PIN_M1_IN2, pwmM1, leftNormalized);
-    applyPWM(PIN_M2_IN1, PIN_M2_IN2, pwmM2, rightNormalized);
+    applyPWM(PIN_ML_FOR, PIN_ML_REV, pwmM1, leftNormalized);
+    applyPWM(PIN_MR_FOR, PIN_MR_REV, pwmM2, rightNormalized);
 
     Serial.printf("Set velocities L: %.2f R: %.2f, PWM L: %d R: %d\n",
                   leftNormalized, rightNormalized, pwmM1, pwmM2);
@@ -69,8 +69,8 @@ void MotorControl::setVelocityOpenLoop(float leftNormalized, float rightNormaliz
     int pwmM1 = (int)(fabs(leftNormalized) * 255);
     int pwmM2 = (int)(fabs(rightNormalized) * 255);
 
-    applyPWM(PIN_M1_IN1, PIN_M1_IN2, pwmM1, leftNormalized);
-    applyPWM(PIN_M2_IN1, PIN_M2_IN2, pwmM2, rightNormalized);
+    applyPWM(PIN_ML_FOR, PIN_ML_REV, pwmM1, leftNormalized);
+    applyPWM(PIN_MR_FOR, PIN_MR_REV, pwmM2, rightNormalized);
 
     Serial.printf("[Open-loop] L: %.2f → PWM %d, R: %.2f → PWM %d\n",
                   leftNormalized, pwmM1, rightNormalized, pwmM2);

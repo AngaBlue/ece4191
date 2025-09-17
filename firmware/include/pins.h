@@ -66,19 +66,19 @@
  * Servos
  */
 #ifdef esp32s3cam_lonelybinary
-#define PIN_SERVO_PAN 46
-#define PIN_SERVO_TILT 14
+#define PIN_SERVO_PAN 38
+#define PIN_SERVO_TILT 20
 #endif
 
 /**
  * Motors
  */
 #ifdef esp32s3cam_lonelybinary
-#define PIN_M1_IN1 21
-#define PIN_M1_IN2 47
+#define PIN_ML_FOR 21
+#define PIN_ML_REV 47
 
-#define PIN_M2_IN1 39
-#define PIN_M2_IN2 40
+#define PIN_MR_FOR 39
+#define PIN_MR_REV 40
 #endif
 
 /**

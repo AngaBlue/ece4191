@@ -5,13 +5,16 @@
 PIDController::PIDController(float kp, float ki, float kd, float dt)
     : kp_(kp), ki_(ki), kd_(kd), dt_(dt), integral_(0), last_error_(0) {}
 
-int PIDController::update(float setpoint, float measured) {
+int PIDController::update(float setpoint, float measured)
+{
     float error = setpoint - measured;
     integral_ += error * dt_;
 
     // Clamp integral to avoid windup
-    if (integral_ > integral_limit_) integral_ = integral_limit_;
-    else if (integral_ < -integral_limit_) integral_ = -integral_limit_;
+    if (integral_ > integral_limit_)
+        integral_ = integral_limit_;
+    else if (integral_ < -integral_limit_)
+        integral_ = -integral_limit_;
 
     float derivative = (error - last_error_) / dt_;
     float output = kp_ * error + ki_ * integral_ + kd_ * derivative;

@@ -384,7 +384,8 @@ void loop()
 
   // Stop movement after no inputs are received
   unsigned long now = millis();
-  if (now - lastMovementCommand > MOVEMENT_TIMEOUT) {
-      motorControl.setVelocityOpenLoop(0.0f, 0.0f);
+  if (now - lastMovementCommand > MOVEMENT_TIMEOUT)
+  {
+    motorControl.setVelocityOpenLoop(0.0f, 0.0f);
   }
 }
