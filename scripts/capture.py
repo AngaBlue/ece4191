@@ -3,7 +3,7 @@ import time
 import argparse
 import cv2
 from FrameBus import FrameBus
-from discover import discover_esp32_ip
+from ip import get_ip
 
 
 def main():
@@ -13,7 +13,7 @@ def main():
 
     os.makedirs(args.out, exist_ok=True)
 
-    ip = discover_esp32_ip()
+    ip = get_ip()
     if not ip:
         raise RuntimeError("ESP32 not found on hotspot subnet")
     print("ESP32 IP:", ip)
