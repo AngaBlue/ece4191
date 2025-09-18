@@ -27,7 +27,7 @@ Start the mobile hotspot.  This will allow you to stay connected to the internet
 
 To program the robot to use your hotspot, open `/firmware/include/config.h` and modify `HOTSPOT_SSID` and `HOTSPOT_PASS` to match your Network Properties.  Once set, build and upload the code (more instructions on this process can be found in `/firmware/README.md`).
 
-As the MCU may be assigned a new IP on each connection, use the script in `/scripts/discover.py` to programmatically find the IP of the MCU on startup.
+As the MCU may be assigned a new IP on each connection, use the `get_ip()` function from `/scripts/ip.py` to programmatically find the IP of the MCU on startup.
 
 ## Low-Latency Frame Video Feed
 In order to reduce the video feed latency frames are served as 640x480 MJPEG on RTSP over UDP.  On both the MCU and client, the frame buffer should be a single frame in order to only serve the most recent information, at the cost of frame pacing.  A frame bus is provided in `/scripts/FrameBus.py` to simplify reading the video stream, with example usage found in `/scripts/camera.py`.

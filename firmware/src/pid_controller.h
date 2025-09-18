@@ -1,7 +1,8 @@
 // pid_controller.h
 #pragma once
 
-class PIDController {
+class PIDController
+{
 public:
     PIDController(float kp, float ki, float kd, float dt);
 
@@ -18,6 +19,8 @@ private:
 };
 
 template <typename T>
-T clamp(T val, T minVal, T maxVal) {
-    return (val < minVal) ? minVal : (val > maxVal) ? maxVal : val;
+T clamp(T val, T minVal, T maxVal)
+{
+    return (val < minVal) ? minVal : (val > maxVal) ? maxVal
+                                                    : val;
 }

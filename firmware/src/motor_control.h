@@ -2,7 +2,8 @@
 #pragma once
 #include "pid_controller.h"
 
-class MotorControl {
+class MotorControl
+{
 public:
     void begin();
     void updateVelocity();
@@ -12,7 +13,7 @@ public:
     float getVelocityM2() const;
 
 private:
-    static constexpr float CPR_GEARBOX = 50*380;
+    static constexpr float CPR_GEARBOX = 50 * 380;
     static constexpr float MAX_RPM = 100.0f;
 
     unsigned long lastVelocityTime = 0;
