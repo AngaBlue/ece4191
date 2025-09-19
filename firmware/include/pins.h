@@ -74,11 +74,11 @@
  * Motors
  */
 #ifdef esp32s3cam_lonelybinary
-#define PIN_ML_FOR 21
-#define PIN_ML_REV 47
+#define PIN_ML_FOR 47
+#define PIN_ML_REV 21
 
-#define PIN_MR_FOR 39
-#define PIN_MR_REV 40
+#define PIN_MR_FOR 40
+#define PIN_MR_REV 39
 #endif
 
 /**
