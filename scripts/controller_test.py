@@ -36,8 +36,8 @@ def main():
     prev_buttons = [None] * num_buttons
 
     brightness = 0  # 0–6
-    pan = 0.0
-    tilt = 0.0
+    pan = 135
+    tilt = 135
     prev_brightness = brightness
 
     last_sample = 0
@@ -85,8 +85,8 @@ def main():
 
                 # Convert to robot motion
                 # Forward/backward: negative Y (up is -1 in pygame)
-                translation = -left_y   # forward/backward
-                rotation = left_x       # left/right turn
+                translation = left_y   # forward/backward
+                rotation = -left_x       # left/right turn
 
                 # Only print if there is meaningful motion
                 if translation != 0.0 or rotation != 0.0:
