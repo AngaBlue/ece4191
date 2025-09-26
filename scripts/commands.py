@@ -25,8 +25,7 @@ def send_packet(cmd: int, payload: bytes, mid: int = 0):
 
 
 def set_brightness(level: int, mid: int = 0):
-    # int16 little-endian
-    payload = struct.pack("<h", int(level))
+    payload = struct.pack("<B", int(level))
     send_packet(0x01, payload, mid)
 
 
@@ -36,5 +35,5 @@ def move(x: float, y: float, mid: int = 0):
 
 
 def camera(pan: int, tilt: int, mid: int = 0):
-    payload = struct.pack("<ii", int(pan), int(tilt))
+    payload = struct.pack("<BB", int(pan), int(tilt))
     send_packet(0x03, payload, mid)

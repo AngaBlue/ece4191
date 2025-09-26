@@ -1,3 +1,4 @@
+#include <Arduino.h>
 #include "IRLED.h"
 
 const int DUTIES[7] = {0, 10, 50, 100, 150, 200, 255};

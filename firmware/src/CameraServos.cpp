@@ -1,7 +1,9 @@
+#include <Arduino.h>
 #include "CameraServos.h"
 #include <ESP32Servo.h>
 #include <config.h>
 #include <pins.h>
+#include <stdint.h>
 
 void CameraServos::begin()
 {
@@ -32,7 +34,7 @@ inline int CameraServos::angleToMicros(int deg, int lo, int hi)
   return SERVO_MIN_US + (int)((long long)deg * (SERVO_MAX_US - SERVO_MIN_US) / SERVO_RANGE_DEG);
 };
 
-void CameraServos::onCamera(int pan, int tilt)
+void CameraServos::onCamera(uint8_t pan, uint8_t tilt)
 {
   this->move(pan, tilt);
   Serial.printf("[UDP] Camera Position comand: P=%d T=%d\n", pan, tilt);

@@ -1,12 +1,13 @@
 import pygame
 import time
 import commands
+from arcade_mix import arcade_mix
 
 # from print_message import send_message_to_esp32
 
 # --- Settings ---
 DEADZONE = 0.15        # Ignore small noise
-SAMPLE_RATE = 0.05      # ~20 Hz
+SAMPLE_RATE = 0.01      # ~20 Hz
 BRIGHTNESS_STEP = 1
 
 BRIGHTNESS_MIN = 0
@@ -36,7 +37,7 @@ def main():
     print("Press Ctrl+C to exit...\n")
 
     num_buttons = joystick.get_numbuttons()
-    prev_buttons = [False] * num_buttons
+    button_state = [False] * num_buttons
 
     brightness = 0  # 0–6
     pan = PAN_HOME
@@ -48,98 +49,88 @@ def main():
     try:
         while True:
             now = time.time()
-            if now - last_sample >= SAMPLE_RATE:
-                last_sample = now
-                pygame.event.pump()
+            if now - last_sample < SAMPLE_RATE:
+                continue
 
-                # --- Buttons ---
-                for b in range(num_buttons):
-                    pressed = joystick.get_button(b)
-                    if prev_buttons[b] is None or pressed != prev_buttons[b]:
-                        prev_buttons[b] = pressed
+            last_sample = now
+            pygame.event.pump()
 
-                        if pressed:
-                            match b:
-                                case 0:
-                                    print("Screenshot request queued")
-                                case 8:  # Reset angle
-                                    pan = 135
-                                    tilt = 135
-                                    commands.camera(pan, tilt)
-                                    print("Camera reset to center")
-                                case 11:  # Snap up
-                                    pan = PAN_HOME
-                                    tilt = TILT_HOME + 45
-                                    commands.camera(pan, tilt)
-                                case 13:  # Snap left
-                                    pan = PAN_HOME + 90
-                                    tilt = TILT_HOME
-                                    commands.camera(pan, tilt)
-                                case 14:  # Snap right
-                                    pan = PAN_HOME - 90
-                                    tilt = TILT_HOME
-                                    commands.camera(pan, tilt)
-                                case 12:  # Snap down
-                                    pan = PAN_HOME
-                                    tilt = TILT_MIN
-                                    commands.camera(pan, tilt)
-                                case 9:  # Decrease brightness
-                                    brightness = max(
-                                        BRIGHTNESS_MIN, brightness - BRIGHTNESS_STEP)
-                                case 10:  # Increase brightness
-                                    brightness = min(
-                                        BRIGHTNESS_MAX, brightness + BRIGHTNESS_STEP)
-                                case _:
-                                    print(f"Unknown Button Press {b}")
+            # --- Buttons ---
+            for b in range(num_buttons):
+                pressed = joystick.get_button(b)
+                if pressed == button_state[b]:
+                    continue
+                button_state[b] = pressed
 
-                            if brightness != prev_brightness:
-                                print(f"Brightness: {brightness}")
-                                commands.set_brightness(brightness)
-                                prev_brightness = brightness
+                if pressed:
+                    match b:
+                        case 0:
+                            print("Screenshot request queued")
+                        case 8:  # Reset angle
+                            pan = 135
+                            tilt = 135
+                            commands.camera(pan, tilt)
+                            print("Camera reset to center")
+                        case 11:  # Snap up
+                            pan = PAN_HOME
+                            tilt = TILT_HOME + 45
+                            commands.camera(pan, tilt)
+                        case 13:  # Snap left
+                            pan = PAN_HOME + 90
+                            tilt = TILT_HOME
+                            commands.camera(pan, tilt)
+                        case 14:  # Snap right
+                            pan = PAN_HOME - 90
+                            tilt = TILT_HOME
+                            commands.camera(pan, tilt)
+                        case 12:  # Snap down
+                            pan = PAN_HOME
+                            tilt = TILT_MIN
+                            commands.camera(pan, tilt)
+                        case 9:  # Decrease brightness
+                            brightness = max(
+                                BRIGHTNESS_MIN, brightness - BRIGHTNESS_STEP)
+                        case 10:  # Increase brightness
+                            brightness = min(
+                                BRIGHTNESS_MAX, brightness + BRIGHTNESS_STEP)
+                        case _:
+                            print(f"Unknown Button Press {b}")
 
-                # --- Left stick robot control ---
-                raw_x = -joystick.get_axis(0)  # left stick horizontal
-                raw_y = -joystick.get_axis(1)  # left stick vertical
+                    if brightness != prev_brightness:
+                        print(f"Brightness: {brightness}")
+                        commands.set_brightness(brightness)
+                        prev_brightness = brightness
 
-                # Apply deadzone
-                left_x = 0.0 if abs(raw_x) < DEADZONE else raw_x
-                left_y = 0.0 if abs(raw_y) < DEADZONE else raw_y
+            # --- Left stick robot control ---
+            raw_x = -joystick.get_axis(0)  # left stick horizontal
+            raw_y = -joystick.get_axis(1)  # left stick vertical
 
-                # Convert to robot motion
-                # Forward/backward: negative Y (up is -1 in pygame)
-                translation = left_y   # forward/backward
-                rotation = -left_x       # left/right turn
+            left, right = arcade_mix(raw_x, raw_y);
+            commands.move(left, right)
 
-                # Only print if there is meaningful motion
-                if translation != 0.0 or rotation != 0.0:
-                    print(
-                        f"Robot move -> Translation: {translation:.3f}, Rotation: {rotation:.3f}")
+            # --- Right stick camera control only ---
+            raw_pan = joystick.get_axis(2)   # right stick horizontal
+            raw_tilt = joystick.get_axis(3)  # right stick vertical
 
-                commands.move(translation, rotation)
+            # Deadzone
+            right_x = 0.0 if abs(raw_pan) < DEADZONE else raw_pan
+            right_y = 0.0 if abs(raw_tilt) < DEADZONE else raw_tilt
 
-                # --- Right stick camera control only ---
-                raw_pan = joystick.get_axis(2)   # right stick horizontal
-                raw_tilt = joystick.get_axis(3)  # right stick vertical
+            # Update pan/tilt if meaningful movement
+            if right_x != 0.0 or right_y != 0.0:
+                new_pan = int(pan - right_x * PAN_STEP)
+                new_pan = max(PAN_MIN, min(PAN_MAX, new_pan))
 
-                # Deadzone
-                right_x = 0.0 if abs(raw_pan) < DEADZONE else raw_pan
-                right_y = 0.0 if abs(raw_tilt) < DEADZONE else raw_tilt
+                # invert Y axis
+                new_tilt = int(tilt - right_y * TILT_STEP)
+                new_tilt = max(TILT_MIN, min(TILT_MAX, new_tilt))
 
-                # Update pan/tilt if meaningful movement
-                if right_x != 0.0 or right_y != 0.0:
-                    new_pan = int(pan - right_x * PAN_STEP)
-                    new_pan = max(PAN_MIN, min(PAN_MAX, new_pan))
-
-                    # invert Y axis
-                    new_tilt = int(tilt - right_y * TILT_STEP)
-                    new_tilt = max(TILT_MIN, min(TILT_MAX, new_tilt))
-
-                    # Only print if changed
-                    if new_pan != pan or new_tilt != tilt:
-                        pan = new_pan
-                        tilt = new_tilt
-                        print(f"Pan: {pan:d}, Tilt: {tilt:d}")
-                        commands.camera(pan, tilt)
+                # Only print if changed
+                if new_pan != pan or new_tilt != tilt:
+                    pan = new_pan
+                    tilt = new_tilt
+                    print(f"Pan: {pan:d}, Tilt: {tilt:d}")
+                    commands.camera(pan, tilt)
 
     except KeyboardInterrupt:
         print("\nExiting...")

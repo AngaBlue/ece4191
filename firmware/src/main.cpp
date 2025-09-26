@@ -295,10 +295,10 @@ static void parseControlInputs()
   switch (cmd)
   {
   case CMD_BRIGHTNESS:
-    if (len == 2)
+    if (len == 1)
     {
       uint8_t level;
-      memcpy(&level, payload, 2);
+      memcpy(&level, payload, 1);
       irLed.onBrightness(level);
     }
     break;
@@ -307,7 +307,7 @@ static void parseControlInputs()
     if (len == 8)
     {
       float left, right;
-      memcpy(&left, payload + 0, 4);
+      memcpy(&left, payload, 4);
       memcpy(&right, payload + 4, 4);
       lastMovementCommand = millis();
       motors.onMovement(left, right);
@@ -315,11 +315,11 @@ static void parseControlInputs()
     break;
 
   case CMD_CAMERA:
-    if (len == 8)
+    if (len == 2)
     {
-      int pan, tilt;
-      memcpy(&pan, payload + 0, 4);
-      memcpy(&tilt, payload + 4, 4);
+      uint8_t pan, tilt;
+      memcpy(&pan, payload, 1);
+      memcpy(&tilt, payload + 1, 1);
       servos.onCamera(pan, tilt);
     }
     break;
