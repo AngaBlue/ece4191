@@ -7,7 +7,7 @@ class CameraServos
 public:
   void begin();
   void move(int pan, int tilt);
-  void onCamera(uint8_t pan, uint8_t tilt);
+  void onCamera(uint16_t pan, uint16_t tilt);
 
 private:
   Servo pan;
