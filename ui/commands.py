@@ -9,8 +9,6 @@ if ESP_IP is None:
     ESP_IP = "127.0.0.1"
     print(f"Could not find ESP32, connecting to {ESP_IP}")
 
-print(ESP_IP)
-
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 

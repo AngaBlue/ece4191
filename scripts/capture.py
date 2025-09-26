@@ -2,7 +2,7 @@ import os
 import time
 import argparse
 import cv2
-from FrameBus import FrameBus
+from ui.framebus import FrameBus
 from ip import get_ip
 
 

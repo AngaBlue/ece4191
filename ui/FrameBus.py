@@ -85,7 +85,12 @@ class FrameBus:
             return None if self._latest is None else self._latest.copy()
 
     def _run(self):
+        if not self._proc:
+            return
+
         stdout = self._proc.stdout
+        if not stdout:
+            return
         frame_bytes = BYTES
         frames = 0
         t0 = time.time()
