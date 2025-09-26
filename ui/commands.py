@@ -2,12 +2,8 @@ import socket
 import struct
 from ip import get_ip
 
-ESP_IP = get_ip()
+IP = get_ip()
 PORT = 65001
-
-if ESP_IP is None:
-    ESP_IP = "127.0.0.1"
-    print(f"Could not find ESP32, connecting to {ESP_IP}")
 
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -17,7 +13,7 @@ def send_packet(cmd: int, payload: bytes, mid: int = 0):
     chk = (sum(header) + sum(payload)) & 0xFF
     pkt = header + payload + struct.pack("<B", chk)
     try:
-        sock.sendto(pkt, (ESP_IP, PORT))
+        sock.sendto(pkt, (IP, PORT))
     except OSError as e:
         print(f"[Warning] Could not send UDP packet: {e}")
 

@@ -15,6 +15,9 @@ WINDOW_SCALE = 2.0    # scale camera view in window (1.0 = 640x480)
 DRAW_FPS = 60         # target UI refresh rate (Hz)
 
 IP = get_ip()
+if IP == None:
+    print("Could not find ESP32 IP")
+    exit()
 RTSP_URL = f"rtsp://{IP}/"
 SCREENSHOT_DIR = "screenshots"
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
