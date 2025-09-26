@@ -54,11 +54,9 @@ def control_loop(joystick: pygame.joystick.JoystickType,
             time.sleep(0.001)
             continue
         last_sample = now
-
-        # You can safely call pump here; main thread still handles window events
         pygame.event.pump()
 
-        # --- Buttons (edge-triggered) ---
+        # Buttons (rising-edge)
         for b in range(num_buttons):
             curr = joystick.get_button(b)
             prev = button_state[b]
@@ -66,50 +64,55 @@ def control_loop(joystick: pygame.joystick.JoystickType,
             if not curr or prev:
                 continue
 
-            if b == 0:  # Screenshot
-                state["screenshot_pending"] = True
-            elif b == 8:  # Reset angle
-                pan = PAN_HOME
-                tilt = TILT_HOME
-                commands.camera(int(pan), int(tilt))
-            elif b == 11:  # Snap up
-                pan = PAN_HOME
-                tilt = clamp(TILT_MIN, TILT_MAX, TILT_HOME + 45)
-                commands.camera(int(pan), int(tilt))
-            elif b == 13:  # Snap left
-                pan = clamp(PAN_MIN, PAN_MAX, PAN_HOME + 90)
-                tilt = TILT_HOME
-                commands.camera(int(pan), int(tilt))
-            elif b == 14:  # Snap right
-                pan = clamp(PAN_MIN, PAN_MAX, PAN_HOME - 90)
-                tilt = TILT_HOME
-                commands.camera(int(pan), int(tilt))
-            elif b == 12:  # Snap down
-                pan = PAN_HOME
-                tilt = TILT_MIN
-                commands.camera(int(pan), int(tilt))
-            elif b == 9:  # Decrease brightness
-                brightness = max(BRIGHTNESS_MIN, brightness - BRIGHTNESS_STEP)
-                commands.set_brightness(brightness)
-            elif b == 10:  # Increase brightness
-                brightness = min(BRIGHTNESS_MAX, brightness + BRIGHTNESS_STEP)
-                commands.set_brightness(brightness)
+            match b:
+                case 0:
+                    state['screenshot_pending'] = True
+                case 8:  # Reset angle
+                    pan = 135
+                    tilt = 135
+                    commands.camera(pan, tilt)
+                case 11:  # Snap up
+                    pan = PAN_HOME
+                    tilt = TILT_HOME + 45
+                    commands.camera(pan, tilt)
+                case 13:  # Snap left
+                    pan = PAN_HOME + 90
+                    tilt = TILT_HOME
+                    commands.camera(pan, tilt)
+                case 14:  # Snap right
+                    pan = PAN_HOME - 90
+                    tilt = TILT_HOME
+                    commands.camera(pan, tilt)
+                case 12:  # Snap down
+                    pan = PAN_HOME
+                    tilt = TILT_MIN
+                    commands.camera(pan, tilt)
+                case 9:  # Decrease brightness
+                    brightness = max(
+                        BRIGHTNESS_MIN, brightness - BRIGHTNESS_STEP)
+                    commands.set_brightness(brightness)
+                case 10:  # Increase brightness
+                    brightness = min(
+                        BRIGHTNESS_MAX, brightness + BRIGHTNESS_STEP)
+                    commands.set_brightness(brightness)
+                case _:
+                    print(f"Unknown Button Press {b}")
 
-        # --- Drive (left stick) ---
+        #  Drive (left stick)
         left_x = -joystick.get_axis(0)
         left_y = -joystick.get_axis(1)
         left, right = arcade_mix(left_x, left_y)
         commands.move(left, right)
 
-        # --- Camera jog (right stick) ---
+        # Camera (right stick)
         right_x = -joystick.get_axis(2)
         right_y = -joystick.get_axis(3)
         raw_pan, raw_tilt = shape(right_x), shape(right_y)
         if raw_pan != 0 or raw_tilt != 0:
-            pan = clamp(PAN_MIN, PAN_MAX, pan + raw_pan * SERVO_RATE * 180.0)
+            pan = clamp(PAN_MIN, PAN_MAX, pan + raw_pan * SERVO_RATE)
             tilt = clamp(TILT_MIN, TILT_MAX, tilt +
-                         raw_tilt * SERVO_RATE * 180.0)
-            commands.camera(int(pan), int(tilt))
+                         raw_tilt * SERVO_RATE)
+            commands.camera(pan, tilt)
 
         # publish state for overlay
         state["brightness"] = brightness

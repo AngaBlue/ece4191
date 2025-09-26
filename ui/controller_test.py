@@ -1,7 +1,7 @@
 import pygame
 import time
 import commands
-from ui.arcade_mix import arcade_mix, shape
+from arcade_mix import arcade_mix, shape
 
 # --- Settings ---
 SAMPLE_RATE = 0.01

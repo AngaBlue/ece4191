@@ -13,11 +13,10 @@ from control import PAN_HOME, TILT_HOME, control_loop
 # --- Settings ---
 WINDOW_SCALE = 2.0    # scale camera view in window (1.0 = 640x480)
 DRAW_FPS = 60         # target UI refresh rate (Hz)
-SHOW_GRID = False
 
 IP = get_ip()
-RTSP_URL = os.environ.get("RTSP_URL", f"rtsp://{IP}/")
-SCREENSHOT_DIR = os.environ.get("SCREENSHOT_DIR", "screenshots")
+RTSP_URL = f"rtsp://{IP}/"
+SCREENSHOT_DIR = "screenshots"
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
 
@@ -34,14 +33,6 @@ def draw_overlay(surface, font, info):
     for line in info:
         draw_text(surface, line, (x, y), font)
         y += font.get_height() + 4
-
-
-def draw_grid(surface, step=40):
-    w, h = surface.get_size()
-    for x in range(0, w, step):
-        pygame.draw.line(surface, (80, 80, 80), (x, 0), (x, h), 1)
-    for y in range(0, h, step):
-        pygame.draw.line(surface, (80, 80, 80), (0, y), (w, y), 1)
 
 
 def save_screenshot(rgb_frame):
@@ -139,9 +130,6 @@ def main():
                 if last_rgb is None:
                     screen.fill((0, 0, 0))
 
-            if SHOW_GRID:
-                draw_grid(screen, step=40)
-
             # Update camera FPS from frames RECEIVED
             now = time.time()
             if now - cam_t0 >= 1.0:
@@ -153,7 +141,7 @@ def main():
             info = [
                 f"IP: {IP}",
                 f"Cam FPS {cam_fps:4.1f} | Draw {clock.get_fps():4.1f} | Ctrl {state['control_hz']:4.1f}",
-                f"Pan {int(state['pan']):3d}°  Tilt {int(state['tilt']):3d}°  Bright {state['brightness']}",
+                f"Pan {int(state['pan']):3d}°  Tilt {int(state['tilt']):3d}°  Brightness {state['brightness']}",
             ]
             draw_overlay(screen, font, info)
 
