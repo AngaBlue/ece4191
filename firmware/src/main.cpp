@@ -358,9 +358,7 @@ void setup()
 
   init_camera();
 
-  // Center at 135° (midpoint of 0..270)
   servos.begin();
-  servos.move(SERVO_RANGE_DEG / 2, SERVO_RANGE_DEG / 2);
 
   irLed.begin();
   motorControl.begin();

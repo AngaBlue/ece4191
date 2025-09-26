@@ -1,3 +1,4 @@
+#pragma once
 #include <ESP32Servo.h>
 
 class CameraServos
@@ -11,5 +12,5 @@ private:
   Servo pan;
   Servo tilt;
 
-  static inline int angleToMicros(int deg);
+  inline int angleToMicros(int deg, int hi, int lo);
 };
