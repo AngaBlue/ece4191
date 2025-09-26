@@ -36,7 +36,7 @@ def main():
     print("Press Ctrl+C to exit...\n")
 
     num_buttons = joystick.get_numbuttons()
-    prev_buttons = [None] * num_buttons
+    prev_buttons = [False] * num_buttons
 
     brightness = 0  # 0–6
     pan = PAN_HOME
