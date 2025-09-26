@@ -39,8 +39,8 @@ def main():
     prev_buttons = [None] * num_buttons
 
     brightness = 0  # 0–6
-    pan = 135
-    tilt = 135
+    pan = PAN_HOME
+    tilt = TILT_HOME
     prev_brightness = brightness
 
     last_sample = 0
