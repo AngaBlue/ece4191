@@ -62,31 +62,31 @@ def main():
                             match b:
                                 case 0:
                                     print("Screenshot request queued")
-                                case 8: # Reset angle
+                                case 8:  # Reset angle
                                     pan = 135
                                     tilt = 135
                                     commands.camera(pan, tilt)
                                     print("Camera reset to center")
-                                case 11: # Snap up
+                                case 11:  # Snap up
                                     pan = PAN_HOME
                                     tilt = TILT_HOME + 45
                                     commands.camera(pan, tilt)
-                                case 13: # Snap left
+                                case 13:  # Snap left
                                     pan = PAN_HOME + 90
                                     tilt = TILT_HOME
                                     commands.camera(pan, tilt)
-                                case 14: # Snap right
+                                case 14:  # Snap right
                                     pan = PAN_HOME - 90
                                     tilt = TILT_HOME
                                     commands.camera(pan, tilt)
-                                case 12: # Snap down
+                                case 12:  # Snap down
                                     pan = PAN_HOME
                                     tilt = TILT_MIN
                                     commands.camera(pan, tilt)
-                                case 9: # Decrease brightness
+                                case 9:  # Decrease brightness
                                     brightness = max(
                                         BRIGHTNESS_MIN, brightness - BRIGHTNESS_STEP)
-                                case 10: # Increase brightness
+                                case 10:  # Increase brightness
                                     brightness = min(
                                         BRIGHTNESS_MAX, brightness + BRIGHTNESS_STEP)
                                 case _:
@@ -98,8 +98,8 @@ def main():
                                 prev_brightness = brightness
 
                 # --- Left stick robot control ---
-                raw_x = joystick.get_axis(0)  # left stick horizontal
-                raw_y = joystick.get_axis(1)  # left stick vertical
+                raw_x = -joystick.get_axis(0)  # left stick horizontal
+                raw_y = -joystick.get_axis(1)  # left stick vertical
 
                 # Apply deadzone
                 left_x = 0.0 if abs(raw_x) < DEADZONE else raw_x
@@ -127,11 +127,11 @@ def main():
 
                 # Update pan/tilt if meaningful movement
                 if right_x != 0.0 or right_y != 0.0:
-                    new_pan = int(pan -right_x * PAN_STEP)
+                    new_pan = int(pan - right_x * PAN_STEP)
                     new_pan = max(PAN_MIN, min(PAN_MAX, new_pan))
 
                     # invert Y axis
-                    new_tilt = int(tilt -right_y * TILT_STEP)
+                    new_tilt = int(tilt - right_y * TILT_STEP)
                     new_tilt = max(TILT_MIN, min(TILT_MAX, new_tilt))
 
                     # Only print if changed
