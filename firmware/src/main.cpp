@@ -2,17 +2,17 @@
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <ESP32-RTSPServer.h>
-#include <ESP32Servo.h>
 #include "esp_camera.h"
 #include "pins.h"
 #include "config.h"
 #include "motor_control.h"
 #include "pwm_led.h"
+#include "CameraServos.h"
 
 RTSPServer rtspServer;
 WiFiUDP udp;
 char packetBuffer[255];
-Servo servoPan, servoTilt;
+CameraServos servos;
 
 // RTSP
 int quality;
@@ -173,28 +173,10 @@ void sendAudio(void *pvParameters)
 }
 #endif
 
-static inline int clampi(int v, int lo, int hi)
-{
-  return v < lo ? lo : (v > hi ? hi : v);
-}
-
-// Map 0..270° → 500..2500 µs (linear)
-static inline int angleToMicros(int deg)
-{
-  deg = clampi(deg, 0, SERVO_RANGE_DEG);
-  return SERVO_MIN_US + (int)((long long)deg * (SERVO_MAX_US - SERVO_MIN_US) / SERVO_RANGE_DEG);
-}
-
-void setPanTiltDegrees(int panDeg, int tiltDeg)
-{
-  servoPan.writeMicroseconds(angleToMicros(panDeg));
-  servoTilt.writeMicroseconds(angleToMicros(tiltDeg));
-}
-
 void onCamera(int pan, int tilt)
 {
   Serial.printf("[Camera]: %d, %d\n", pan, tilt);
-  setPanTiltDegrees(pan, tilt);
+  servos.move(pan, tilt);
 }
 
 // ===== Movement handler =====
@@ -376,21 +358,9 @@ void setup()
 
   init_camera();
 
-  // (Optional) make sure LEDC timers are available on ESP32
-  ESP32PWM::allocateTimer(0);
-  ESP32PWM::allocateTimer(1);
-  ESP32PWM::allocateTimer(2);
-  ESP32PWM::allocateTimer(3);
-
-  // Both servos run at 50 Hz and use the same pulse range
-  servoPan.setPeriodHertz(SERVO_FREQ_HZ);
-  servoTilt.setPeriodHertz(SERVO_FREQ_HZ);
-
-  servoPan.attach(PIN_SERVO_PAN, SERVO_MIN_US, SERVO_MAX_US);
-  servoTilt.attach(PIN_SERVO_TILT, SERVO_MIN_US, SERVO_MAX_US);
-
   // Center at 135° (midpoint of 0..270)
-  setPanTiltDegrees(SERVO_RANGE_DEG / 2, SERVO_RANGE_DEG / 2);
+  servos.begin();
+  servos.move(SERVO_RANGE_DEG / 2, SERVO_RANGE_DEG / 2);
 
   irLed.begin();
   motorControl.begin();
