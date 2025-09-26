@@ -31,3 +31,9 @@ inline int CameraServos::angleToMicros(int deg, int lo, int hi)
   deg = deg < lo ? lo : (deg > hi ? hi : deg);
   return SERVO_MIN_US + (int)((long long)deg * (SERVO_MAX_US - SERVO_MIN_US) / SERVO_RANGE_DEG);
 };
+
+void CameraServos::onCamera(int pan, int tilt)
+{
+  this->move(pan, tilt);
+  Serial.printf("[UDP] Camera Position comand: P=%d T=%d\n", pan, tilt);
+}

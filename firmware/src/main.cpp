@@ -5,8 +5,8 @@
 #include "esp_camera.h"
 #include "pins.h"
 #include "config.h"
-#include "motor_control.h"
-#include "pwm_led.h"
+#include "MotorControl.h"
+#include "IRLED.h"
 #include "CameraServos.h"
 
 RTSPServer rtspServer;
@@ -18,8 +18,8 @@ CameraServos servos;
 int quality;
 TaskHandle_t videoTaskHandle = NULL;
 
-MotorControl motorControl;
-PwmLed irLed(PIN_IR_LED);
+MotorControl motors;
+IRLED irLed(PIN_IR_LED);
 
 #ifdef audio_enabled
 #include <ESP_I2S.h>
@@ -173,28 +173,6 @@ void sendAudio(void *pvParameters)
 }
 #endif
 
-void onCamera(int pan, int tilt)
-{
-  Serial.printf("[Camera]: %d, %d\n", pan, tilt);
-  servos.move(pan, tilt);
-}
-
-// ===== Movement handler =====
-void onMovement(float translation, float rotation)
-{
-  float left = constrain(translation - rotation, -1.0f, 1.0f);
-  float right = constrain(translation + rotation, -1.0f, 1.0f);
-  motorControl.setVelocityOpenLoop(left, right);
-  Serial.printf("[UDP] Movement command: T=%.2f R=%.2f -> L=%.2f R=%.2f\n",
-                translation, rotation, left, right);
-}
-
-void onBrightness(int16_t level)
-{
-  Serial.printf("Brightness Level: %d\n", (int)level);
-  irLed.onBrightness(level);
-}
-
 // ====== Wi-Fi (STA) helpers ======
 static void printIPAndStartNetServicesIfNeeded()
 {
@@ -319,20 +297,20 @@ static void parseControlInputs()
   case CMD_BRIGHTNESS:
     if (len == 2)
     {
-      int16_t level;
+      uint8_t level;
       memcpy(&level, payload, 2);
-      onBrightness(level);
+      irLed.onBrightness(level);
     }
     break;
 
   case CMD_MOVEMENT:
     if (len == 8)
     {
-      float x, y;
-      memcpy(&x, payload + 0, 4);
-      memcpy(&y, payload + 4, 4);
+      float left, right;
+      memcpy(&left, payload + 0, 4);
+      memcpy(&right, payload + 4, 4);
       lastMovementCommand = millis();
-      onMovement(x, y);
+      motors.onMovement(left, right);
     }
     break;
 
@@ -342,7 +320,7 @@ static void parseControlInputs()
       int pan, tilt;
       memcpy(&pan, payload + 0, 4);
       memcpy(&tilt, payload + 4, 4);
-      onCamera(pan, tilt);
+      servos.onCamera(pan, tilt);
     }
     break;
 
@@ -361,7 +339,7 @@ void setup()
   servos.begin();
 
   irLed.begin();
-  motorControl.begin();
+  motors.begin();
 
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
@@ -392,6 +370,6 @@ void loop()
   unsigned long now = millis();
   if (now - lastMovementCommand > MOVEMENT_TIMEOUT)
   {
-    motorControl.setVelocityOpenLoop(0.0f, 0.0f);
+    motors.setVelocity(0.0f, 0.0f);
   }
 }
