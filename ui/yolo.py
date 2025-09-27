@@ -26,7 +26,6 @@ def draw_detections(surface: pygame.Surface, det: dict | None, font: pygame.font
         w, h = sx2 - sx1, sy2 - sy1
         cid = int(clss[i]) if clss is not None and len(clss) > i else -1
         conf = float(confs[i]) if confs is not None and len(confs) > i else 0.0
-        print(cid)
         name = CLASS_NAMES[cid]
         color = _color_for_class(cid if cid >= 0 else 0)
         pygame.draw.rect(surface, color, pygame.Rect(sx1, sy1, w, h), width=2)
@@ -55,6 +54,10 @@ def yolo_loop(fb: FrameBus, state: dict, stop_event: threading.Event):
     t0 = time.time()
 
     while not stop_event.is_set():
+        if not state["visual_inferences"]:
+            time.sleep(0.01)
+            continue
+
         frame = fb.latest()
 
         if frame is None:
