@@ -28,7 +28,8 @@ def draw_text(surface, text, pos, font, color=(255, 255, 255), bg=None):
 
 
 def draw_overlay(surface, font, info):
-    banner = pygame.Surface((surface.get_width(), 80), pygame.SRCALPHA)
+    height = (font.get_height() + 4) * len(info) + 8
+    banner = pygame.Surface((surface.get_width(), height), pygame.SRCALPHA)
     banner.fill((0, 0, 0, 140))
     surface.blit(banner, (0, 0))
     x, y = 10, 8
@@ -71,6 +72,7 @@ def main():
         "tilt": TILT_HOME,
         "screenshot_pending": False,
         "control_hz": 0.0,
+        "visual_inferences": False
     }
 
     # FrameBus with subscription queue (frames received counter is based on q.gets)
@@ -118,6 +120,7 @@ def main():
                 f"IP {IP}",
                 f"Cam FPS {cam_fps:4.1f} | Draw FPS {clock.get_fps():4.1f} | Control Rate {state['control_hz']:4.1f}",
                 f"Pan {int(state['pan']):3d}° | Tilt {int(state['tilt']):3d}° | IR Brightness {state['brightness']}",
+                f"Visual Inferences {"On" if state['visual_inferences'] else "Off"}"
             ]
             draw_overlay(screen, font, info)
 

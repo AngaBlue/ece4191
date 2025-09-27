@@ -67,6 +67,8 @@ def control_loop(joystick: pygame.joystick.JoystickType,
             match b:
                 case 0:
                     state['screenshot_pending'] = True
+                case 3:
+                    state['visual_inferences'] = not state['visual_inferences']
                 case 8:  # Reset angle
                     pan = 135
                     tilt = 135
