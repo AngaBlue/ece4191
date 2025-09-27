@@ -99,7 +99,7 @@ def control_loop(joystick: pygame.joystick.JoystickType,
                     print(f"Unknown Button Press {b}")
 
         #  Drive (left stick)
-        left_x = -joystick.get_axis(0)
+        left_x = joystick.get_axis(0)
         left_y = -joystick.get_axis(1)
         left, right = arcade_mix(left_x, left_y)
         commands.move(left, right)
