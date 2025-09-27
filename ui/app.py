@@ -47,6 +47,7 @@ def main():
     pygame.joystick.init()
     pygame.display.set_caption("Robot Controller")
 
+    # Find Controller
     if pygame.joystick.get_count() == 0:
         print("No controllers found")
         return
@@ -73,17 +74,17 @@ def main():
         "infer_hz": 0.0
     }
 
-    # FrameBus
+    # Start FrameBus
     fb = FrameBus(rtsp_url)
     fb.start()
 
-    # Start control thread (decoupled from drawing)
+    # Start control thread
     stop_event = threading.Event()
     ctrl = threading.Thread(target=control_loop, args=(
         joystick, state, stop_event), daemon=True)
     ctrl.start()
 
-    # Start YOLO inference thread (decoupled from both drawing and control)
+    # Start YOLO inference thread
     yolo_thr = threading.Thread(target=yolo_loop, args=(
         fb, state, stop_event), daemon=True)
     yolo_thr.start()
