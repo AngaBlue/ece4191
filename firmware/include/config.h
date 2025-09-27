@@ -13,7 +13,7 @@ static const unsigned long WIFI_RETRY_MS = 5000;
  * Camera
  */
 #define FRAME_SIZE FRAMESIZE_VGA
-#define JPEG_QUALITY 10
+#define JPEG_QUALITY 5
 #define FRAME_BUFFER_COUNT 1
 
 /**

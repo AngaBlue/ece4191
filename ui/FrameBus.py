@@ -18,9 +18,13 @@ class FrameBus:
         self._proc = None
         self._t = None
         self._stop = threading.Event()
-        self._subs: set[queue.Queue] = set()
         self._latest = None
         self._lock = threading.Lock()
+
+        self._fps = 0.0
+        self._fps_counter = 0
+        self._fps_window_start = None
+        self._fps_lock = threading.Lock()
 
     def start(self):
         if self._t and self._t.is_alive():
@@ -58,9 +62,15 @@ class FrameBus:
             bufsize=10**7,
         )
         self._stop.clear()
+
+        # reset FPS window
+        with self._fps_lock:
+            self._fps = 0.0
+            self._fps_counter = 0
+            self._fps_window_start = time.time()
+
         self._t = threading.Thread(target=self._run, daemon=True)
         self._t.start()
-        # also read stderr in background so ffmpeg errors aren’t blocking
         threading.Thread(target=self._drain_stderr, daemon=True).start()
         atexit.register(self.stop)
 
@@ -71,18 +81,19 @@ class FrameBus:
                 self._proc.terminate()
         if self._t:
             self._t.join(timeout=1.0)
-
-    def subscribe(self, maxsize: int = 1) -> queue.Queue:
-        q: queue.Queue = queue.Queue(maxsize=maxsize)
-        self._subs.add(q)
-        return q
-
-    def unsubscribe(self, q: queue.Queue):
-        self._subs.discard(q)
+        with self._fps_lock:
+            self._fps = 0.0
 
     def latest(self):
         with self._lock:
             return None if self._latest is None else self._latest.copy()
+
+    def fps(self) -> float:
+        with self._fps_lock:
+            now = time.time()
+            if now - (self._fps_window_start or 0.0) >= 2.0:
+                self._fps = 0.0
+            return self._fps
 
     def _run(self):
         if not self._proc:
@@ -91,9 +102,9 @@ class FrameBus:
         stdout = self._proc.stdout
         if not stdout:
             return
+
         frame_bytes = BYTES
-        frames = 0
-        t0 = time.time()
+
         while not self._stop.is_set():
             buf = stdout.read(frame_bytes)
             if not buf:
@@ -111,22 +122,21 @@ class FrameBus:
             with self._lock:
                 self._latest = frame
 
-            dead = []
-            for q in list(self._subs):
-                try:
-                    if q.full():
-                        _ = q.get_nowait()
-                    q.put_nowait(frame)
-                except Exception:
-                    dead.append(q)
-            for q in dead:
-                self._subs.discard(q)
-
-            frames += 1
-            if self.debug and frames % 60 == 0:
-                dt = time.time() - t0
-                fps = frames / dt if dt > 0 else 0
-                print(f"[FrameBus] received ~{fps:.1f} fps", file=sys.stderr)
+            # --- FPS accounting (1-second windows) ---
+            now = time.time()
+            with self._fps_lock:
+                # initialize window start if needed (e.g., after start)
+                if self._fps_window_start is None:
+                    self._fps_window_start = now
+                self._fps_counter += 1
+                elapsed = now - self._fps_window_start
+                if elapsed >= 1.0:
+                    self._fps = self._fps_counter / elapsed
+                    self._fps_counter = 0
+                    self._fps_window_start = now
+                    if self.debug:
+                        print(
+                            f"[FrameBus] fps ~{self._fps:.1f}", file=sys.stderr)
 
         rc = self._proc.poll()
         if self.debug:

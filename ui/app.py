@@ -3,7 +3,6 @@ from __future__ import annotations
 import os
 import time
 import threading
-import queue
 import pygame
 import numpy as np
 from FrameBus import FrameBus, W as CAM_W, H as CAM_H
@@ -77,15 +76,6 @@ def main():
     # FrameBus with subscription queue (frames received counter is based on q.gets)
     fb = FrameBus(RTSP_URL, debug=False)
     fb.start()
-    q: queue.Queue = fb.subscribe(maxsize=2)  # drop old frames if UI lags
-
-    # Camera FPS tracking (frames actually received)
-    cam_frames = 0
-    cam_t0 = time.time()
-    cam_fps = 0.0
-
-    # Last drawn frame (for screenshots)
-    last_rgb = None
 
     # Start control thread (decoupled from drawing)
     stop_event = threading.Event()
@@ -102,19 +92,11 @@ def main():
                 if event.type == pygame.QUIT:
                     raise KeyboardInterrupt
 
-            # Try to get the newest frame without blocking UI
-            frame = None
-            while True:
-                try:
-                    f = q.get_nowait()
-                    cam_frames += 1
-                    frame = f
-                except queue.Empty:
-                    break
+            bgr = fb.latest()
 
-            if frame is not None:
+            if bgr is not None:
                 # BGR->RGB
-                rgb = frame[:, :, ::-1]
+                rgb = bgr[:, :, ::-1]
                 last_rgb = rgb
 
                 # Screenshot
@@ -128,17 +110,8 @@ def main():
                 if WINDOW_SCALE != 1.0:
                     surf = pygame.transform.smoothscale(surf, (win_w, win_h))
                 screen.blit(surf, (0, 0))
-            else:
-                # No new frame this tick: keep previous pixels
-                if last_rgb is None:
-                    screen.fill((0, 0, 0))
 
-            # Update camera FPS from frames RECEIVED
-            now = time.time()
-            if now - cam_t0 >= 1.0:
-                cam_fps = cam_frames / (now - cam_t0)
-                cam_frames = 0
-                cam_t0 = now
+            cam_fps = fb.fps()
 
             # Overlay info
             info = [
