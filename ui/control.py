@@ -3,23 +3,7 @@ import time
 import pygame
 import commands
 from arcade_mix import arcade_mix, shape
-
-# Control Loop Sample Rate
-SAMPLE_RATE = 0.01
-
-# Camera & brightness
-BRIGHTNESS_STEP = 1
-BRIGHTNESS_MIN = 0
-BRIGHTNESS_MAX = 6
-
-# Camera servo limits & rates (deg)
-PAN_MIN = 0
-PAN_MAX = 270
-PAN_HOME = 135
-TILT_MIN = 80
-TILT_HOME = 135
-TILT_MAX = 220
-SERVO_RATE = 200 * SAMPLE_RATE  # deg per tick
+from config import BRIGHTNESS_MAX, BRIGHTNESS_MIN, BRIGHTNESS_STEP, PAN_HOME, PAN_MAX, PAN_MIN, SAMPLE_RATE, SERVO_RATE, TILT_HOME, TILT_MAX, TILT_MIN
 
 
 def clamp(minimum, maximum, value):

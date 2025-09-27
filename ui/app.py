@@ -1,5 +1,3 @@
-from __future__ import annotations
-
 import os
 import time
 import threading
@@ -7,18 +5,16 @@ import pygame
 import numpy as np
 from FrameBus import FrameBus, W as CAM_W, H as CAM_H
 from ip import get_ip
-from control import PAN_HOME, TILT_HOME, control_loop
+from control import control_loop
+from config import DRAW_FPS, PAN_HOME, SCREENSHOT_DIR, TILT_HOME, WINDOW_SCALE
+from yolo import draw_detections, yolo_loop
 
-# --- Settings ---
-WINDOW_SCALE = 2.0    # scale camera view in window (1.0 = 640x480)
-DRAW_FPS = 60         # target UI refresh rate (Hz)
-
-IP = get_ip()
-if IP == None:
+ip = get_ip()
+if ip is None:
     print("Could not find ESP32 IP")
-    exit()
-RTSP_URL = f"rtsp://{IP}/"
-SCREENSHOT_DIR = "screenshots"
+    exit(1)
+
+rtsp_url = f"rtsp://{ip}/"
 os.makedirs(SCREENSHOT_DIR, exist_ok=True)
 
 
@@ -72,11 +68,13 @@ def main():
         "tilt": TILT_HOME,
         "screenshot_pending": False,
         "control_hz": 0.0,
-        "visual_inferences": False
+        "visual_inferences": False,
+        "det": None,
+        "infer_hz": 0.0
     }
 
-    # FrameBus with subscription queue (frames received counter is based on q.gets)
-    fb = FrameBus(RTSP_URL, debug=False)
+    # FrameBus
+    fb = FrameBus(rtsp_url, debug=False)
     fb.start()
 
     # Start control thread (decoupled from drawing)
@@ -85,7 +83,13 @@ def main():
         joystick, state, stop_event), daemon=True)
     ctrl.start()
 
+    # Start YOLO inference thread (decoupled from both drawing and control)
+    yolo_thr = threading.Thread(target=yolo_loop, args=(
+        fb, state, stop_event), daemon=True)
+    yolo_thr.start()
+
     clock = pygame.time.Clock()
+    last_rgb = None
 
     try:
         while True:
@@ -94,10 +98,9 @@ def main():
                 if event.type == pygame.QUIT:
                     raise KeyboardInterrupt
 
+            # Get latest frame (non-blocking snapshot)
             bgr = fb.latest()
-
             if bgr is not None:
-                # BGR->RGB
                 rgb = bgr[:, :, ::-1]
                 last_rgb = rgb
 
@@ -106,21 +109,35 @@ def main():
                     save_screenshot(last_rgb)
                     state["screenshot_pending"] = False
 
-                # Blit
-                surf = pygame.image.frombuffer(
-                    rgb.tobytes(), (CAM_W, CAM_H), 'RGB')
+                # Safe surface creation (copy) to avoid buffer lifetime issues
+                surf = pygame.surfarray.make_surface(
+                    np.transpose(rgb, (1, 0, 2)))
                 if WINDOW_SCALE != 1.0:
                     surf = pygame.transform.smoothscale(surf, (win_w, win_h))
                 screen.blit(surf, (0, 0))
+            else:
+                if last_rgb is None:
+                    screen.fill((0, 0, 0))
+                else:
+                    # redraw last frame so screen never goes black between frames
+                    surf = pygame.surfarray.make_surface(
+                        np.transpose(last_rgb, (1, 0, 2)))
+                    if WINDOW_SCALE != 1.0:
+                        surf = pygame.transform.smoothscale(
+                            surf, (win_w, win_h))
+                    screen.blit(surf, (0, 0))
 
-            cam_fps = fb.fps()
+            # Draw detections (latest published; may lag behind the video)
+            if state.get("visual_inferences", False):
+                draw_detections(screen, state.get("det"), font)
 
             # Overlay info
+            cam_fps = fb.fps()
             info = [
-                f"IP {IP}",
-                f"Cam FPS {cam_fps:4.1f} | Draw FPS {clock.get_fps():4.1f} | Control Rate {state['control_hz']:4.1f}",
+                f"IP {ip}",
+                f"Cam FPS {cam_fps:4.1f} | Draw FPS {clock.get_fps():4.1f} | Control Rate {state['control_hz']:4.1f} | Infer FPS {state.get('infer_hz', 0.0):4.1f}",
                 f"Pan {int(state['pan']):3d}° | Tilt {int(state['tilt']):3d}° | IR Brightness {state['brightness']}",
-                f"Visual Inferences {"On" if state['visual_inferences'] else "Off"}"
+                f"Visual Inferences {'On' if state.get('visual_inferences') else 'Off'}",
             ]
             draw_overlay(screen, font, info)
 
@@ -133,6 +150,10 @@ def main():
         stop_event.set()
         try:
             ctrl.join(timeout=1.0)
+        except Exception:
+            pass
+        try:
+            yolo_thr.join(timeout=1.0)
         except Exception:
             pass
         try:

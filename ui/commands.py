@@ -1,10 +1,9 @@
 import socket
 import struct
 from ip import get_ip
+from config import PORT
 
-IP = get_ip()
-PORT = 65001
-
+ip = get_ip()
 sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
 
@@ -13,7 +12,7 @@ def send_packet(cmd: int, payload: bytes, mid: int = 0):
     chk = (sum(header) + sum(payload)) & 0xFF
     pkt = header + payload + struct.pack("<B", chk)
     try:
-        sock.sendto(pkt, (IP, PORT))
+        sock.sendto(pkt, (ip, PORT))
     except OSError as e:
         print(f"[Warning] Could not send UDP packet: {e}")
 

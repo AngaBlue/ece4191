@@ -1,13 +1,6 @@
-# ---------------- Configurable Constants ----------------
-DEADZONE = 0.05             # joystick deadzone (0.0–0.2 typical)
-EXPO = 0.8                  # response shaping (0=linear, 1=very soft center)
-K_TURN_SPEED = 1.0          # reduce turning at speed (0=none, 1=full)
-QUICKTURN_THRESH = 0.10     # allow full spin when |forward| < threshold
-LEFT_GAIN = 1.0             # scaling for left track (0.0–1.0)
-RIGHT_GAIN = 1.0            # scaling for right track (0.0–1.0)
-MIN_DUTY = 0.55             # minimum duty cycle to overcome stiction
-TURN_AXIS_INVERT = -1.0     # set to -1.0 if your X axis is reversed, else 1.0
-# --------------------------------------------------------
+
+
+from config import DEADZONE, EXPO, K_TURN_SPEED, LEFT_GAIN, MIN_DUTY, QUICKTURN_THRESH, RIGHT_GAIN
 
 
 def apply_deadzone(x: float) -> float:

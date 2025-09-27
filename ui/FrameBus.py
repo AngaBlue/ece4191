@@ -1,13 +1,12 @@
 import subprocess
 import threading
-import queue
 import numpy as np
 import atexit
 import contextlib
 import time
 import sys
+from config import H, W
 
-W, H = 640, 480
 BYTES = W * H * 3  # bgr24
 
 
