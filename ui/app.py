@@ -74,7 +74,7 @@ def main():
     }
 
     # FrameBus
-    fb = FrameBus(rtsp_url, debug=False)
+    fb = FrameBus(rtsp_url)
     fb.start()
 
     # Start control thread (decoupled from drawing)
