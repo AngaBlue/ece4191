@@ -18,15 +18,15 @@ SETS = ['train', 'val', 'test']
 SETS_DISTRIBUTION = [0.7, 0.2, 0.1]  # 70% train, 20% val, 10% test
 REPEATS_PER_ANIMAL = 20  # Number of times each animal image is used
 ALPHA_TOLERANCE = 30
-CLASS_NAMES = ['kangaroo', 'cockatoo', 'tasmanian_devil', 'frog', 'platypus']
-
+CLASS_NAMES = ["kangaroo", "cockatoo", "tasmanian_devil",
+               "frog", "platypus", "crocodile", "koala"]
 # Seed for reproducibility
 random.seed("meowmeowmeowmeow")
 
 # Directory setup
 if os.path.exists(OUT_DIR):
     shutil.rmtree(OUT_DIR)
-    
+
 os.makedirs(OUT_DIR, exist_ok=True)
 
 # Sub-directories for train, test, val
@@ -38,11 +38,13 @@ for subdir in SETS:
 animals = [f for f in os.listdir(ANIMAL_DIR) if f.endswith('.png')]
 backgrounds = [b for b in os.listdir(BACKGROUND_DIR) if b.endswith('.jpg')]
 
+
 def get_label_index(animal_name):
     for idx, name in enumerate(CLASS_NAMES):
         if animal_name.startswith(name):
             return idx
     return None  # In case the animal name does not match any class
+
 
 def random_transform(image):
     # Scale
@@ -69,13 +71,15 @@ def random_transform(image):
 
     return image
 
+
 def composite_image(animal_path, background_path, set_name, instance):
     animal = Image.open(animal_path).convert('RGBA')
     background = Image.open(background_path).convert('RGBA')
     animal_transformed = random_transform(animal)
 
     # Calculate effective dimensions after transformation
-    animal_mask = animal_transformed.split()[-1]  # Get the alpha channel as a mask
+    # Get the alpha channel as a mask
+    animal_mask = animal_transformed.split()[-1]
     thresholded_mask = animal_mask.point(lambda p: p > ALPHA_TOLERANCE and 255)
     bbox = thresholded_mask.getbbox()
     animal_transformed = animal_transformed.crop(bbox)
@@ -116,9 +120,11 @@ def composite_image(animal_path, background_path, set_name, instance):
     ]
 
     label_index = get_label_index(os.path.basename(animal_path))
-    label_path = os.path.join(OUT_DIR, set_name, 'labels', file_name.replace('.jpg', '.txt'))
+    label_path = os.path.join(
+        OUT_DIR, set_name, 'labels', file_name.replace('.jpg', '.txt'))
     with open(label_path, 'w') as label_file:
         label_file.write(f"{label_index} {' '.join(map(str, norm_bbox))}\n")
+
 
 total_images = len(animals) * REPEATS_PER_ANIMAL
 images_processed = 0
@@ -130,7 +136,8 @@ for animal in animals:
         percent_complete = (images_processed / total_images) * 100
         chosen_set = random.choices(SETS, weights=SETS_DISTRIBUTION)[0]
         background = random.choice(backgrounds)
-        composite_image(os.path.join(ANIMAL_DIR, animal), os.path.join(BACKGROUND_DIR, background), chosen_set, i)
+        composite_image(os.path.join(ANIMAL_DIR, animal), os.path.join(
+            BACKGROUND_DIR, background), chosen_set, i)
     print(f"{percent_complete:.2f}% - Processed {animal}")
 
 print(f"Generated {images_processed} images in total.")

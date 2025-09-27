@@ -40,4 +40,5 @@ SERVO_RATE = 200 * SAMPLE_RATE  # deg per tick
 YOLO_MODEL = os.environ.get("YOLO_MODEL", "model.pt")
 YOLO_CONF = float(os.environ.get("YOLO_CONF", "0.25"))
 YOLO_IOU = float(os.environ.get("YOLO_IOU",  "0.45"))
-CLASS_NAMES = ["kangaroo", "cockatoo", "tasmanian_devil", "frog", "platypus", "unknown", "unknown"]
+CLASS_NAMES = ["kangaroo", "cockatoo", "tasmanian_devil",
+               "frog", "platypus", "crocodile", "koala"]
