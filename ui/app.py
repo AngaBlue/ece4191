@@ -115,9 +115,9 @@ def main():
 
             # Overlay info
             info = [
-                f"IP: {IP}",
-                f"Cam FPS {cam_fps:4.1f} | Draw {clock.get_fps():4.1f} | Ctrl {state['control_hz']:4.1f}",
-                f"Pan {int(state['pan']):3d}°  Tilt {int(state['tilt']):3d}°  Brightness {state['brightness']}",
+                f"IP {IP}",
+                f"Cam FPS {cam_fps:4.1f} | Draw FPS {clock.get_fps():4.1f} | Control Rate {state['control_hz']:4.1f}",
+                f"Pan {int(state['pan']):3d}° | Tilt {int(state['tilt']):3d}° | IR Brightness {state['brightness']}",
             ]
             draw_overlay(screen, font, info)
 
@@ -125,7 +125,7 @@ def main():
             clock.tick(DRAW_FPS)
 
     except KeyboardInterrupt:
-        print("\nExiting...")
+        print("Exiting...")
     finally:
         stop_event.set()
         try:
