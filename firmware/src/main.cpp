@@ -317,7 +317,7 @@ static void parseControlInputs()
   case CMD_CAMERA:
     if (len == 4)
     {
-      uint8_t pan, tilt;
+      uint16_t pan, tilt;
       memcpy(&pan, payload, 2);
       memcpy(&tilt, payload + 2, 2);
       servos.onCamera(pan, tilt);
