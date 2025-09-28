@@ -5,8 +5,8 @@
  * WiFi
  */
 static const char *NAME = "ESP32S3-R06";
-static const char *HOTSPOT_SSID = "ANGUS-DESKTOP";
-static const char *HOTSPOT_PASS = "12345678";
+static const char *HOTSPOT_SSID = "ESP32S3-R06";
+static const char *HOTSPOT_PASS = "Sb5bo$A33D4K3QK3";
 static const unsigned long WIFI_RETRY_MS = 5000;
 
 /**
