@@ -2,8 +2,8 @@ import threading
 import time
 import pygame
 import commands
-from arcade_mix import arcade_mix, shape
 from config import BRIGHTNESS_MAX, BRIGHTNESS_MIN, BRIGHTNESS_STEP, PAN_HOME, PAN_MAX, PAN_MIN, SAMPLE_RATE, SERVO_RATE, TILT_HOME, TILT_MAX, TILT_MIN
+from tank_mix import tank_mix, shape
 
 
 def clamp(minimum, maximum, value):
@@ -85,20 +85,20 @@ def control_loop(joystick: pygame.joystick.JoystickType,
                     print(f"Unknown Button Press {b}")
 
         #  Drive (left stick)
-        left_x = joystick.get_axis(0)
         left_y = -joystick.get_axis(1)
-        left, right = arcade_mix(left_x, left_y)
+        right_y = -joystick.get_axis(3)
+        left, right = tank_mix(left_y, right_y)
         commands.move(left, right)
 
-        # Camera (right stick)
-        right_x = -joystick.get_axis(2)
-        right_y = -joystick.get_axis(3)
-        raw_pan, raw_tilt = shape(right_x), shape(right_y)
-        if raw_pan != 0 or raw_tilt != 0:
-            pan = clamp(PAN_MIN, PAN_MAX, pan + raw_pan * SERVO_RATE)
-            tilt = clamp(TILT_MIN, TILT_MAX, tilt +
-                         raw_tilt * SERVO_RATE)
-            commands.camera(pan, tilt)
+        # # Camera (right stick)
+        # right_x = -joystick.get_axis(2)
+        # right_y = -joystick.get_axis(3)
+        # raw_pan, raw_tilt = shape(right_x), shape(right_y)
+        # if raw_pan != 0 or raw_tilt != 0:
+        #     pan = clamp(PAN_MIN, PAN_MAX, pan + raw_pan * SERVO_RATE)
+        #     tilt = clamp(TILT_MIN, TILT_MAX, tilt +
+        #                  raw_tilt * SERVO_RATE)
+        #     commands.camera(pan, tilt)
 
         # publish state for overlay
         state["brightness"] = brightness
