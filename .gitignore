@@ -2,5 +2,6 @@ scripts/**/*.jpg
 scripts/**/*.png
 scripts/datasets
 scripts/runs
+ui/screenshots
 __pycache__
 venv

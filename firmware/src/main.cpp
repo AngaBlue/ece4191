@@ -5,19 +5,21 @@
 #include "esp_camera.h"
 #include "pins.h"
 #include "config.h"
-#include "motor_control.h"
-#include "pwm_led.h"
+#include "MotorControl.h"
+#include "IRLED.h"
+#include "CameraServos.h"
 
 RTSPServer rtspServer;
 WiFiUDP udp;
 char packetBuffer[255];
+CameraServos servos;
 
 // RTSP
 int quality;
 TaskHandle_t videoTaskHandle = NULL;
 
-MotorControl motorControl;
-PwmLed irLed(PIN_IR_LED);
+MotorControl motors;
+IRLED irLed(PIN_IR_LED);
 
 #ifdef audio_enabled
 #include <ESP_I2S.h>
@@ -30,6 +32,7 @@ TaskHandle_t audioTaskHandle = NULL;
 
 static bool networkReady = false;
 static unsigned long lastWifiAttempt = 0;
+static unsigned long lastMovementCommand = 0;
 
 void hang()
 {
@@ -129,11 +132,6 @@ static bool readExactly(uint8_t *dst, size_t n)
   return true;
 }
 
-void onCamera(float x, float y)
-{
-  Serial.printf("Camera: %.4f, %.4f\n", x, y);
-}
-
 #ifdef audio_enabled
 static void init_mic()
 {
@@ -174,22 +172,6 @@ void sendAudio(void *pvParameters)
   }
 }
 #endif
-
-// ===== Movement handler =====
-void onMovement(float translation, float rotation)
-{
-  float left = constrain(translation - rotation, -1.0f, 1.0f);
-  float right = constrain(translation + rotation, -1.0f, 1.0f);
-  motorControl.setVelocityOpenLoop(left, right);
-  Serial.printf("[UDP] Movement command: T=%.2f R=%.2f -> L=%.2f R=%.2f\n",
-                translation, rotation, left, right);
-}
-
-void onBrightness(int16_t level)
-{
-  Serial.printf("Brightness Level: %d\n", (int)level);
-  irLed.onBrightness(level);
-}
 
 // ====== Wi-Fi (STA) helpers ======
 static void printIPAndStartNetServicesIfNeeded()
@@ -253,37 +235,8 @@ static void maintainWiFi()
   }
 }
 
-void setup()
+static void parseControlInputs()
 {
-  Serial.begin(115200);
-  Serial.println("Booted!");
-
-  init_camera();
-  irLed.begin();
-  motorControl.begin();
-
-  WiFi.mode(WIFI_STA);
-  WiFi.setSleep(false);
-  WiFi.setHostname(NAME);
-
-  // Start video task immediately; it will send frames when RTSP is ready
-  xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
-
-#ifdef audio_enabled
-  init_mic();
-  xTaskCreate(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle);
-#endif
-
-  // Kick off the first connection attempt right away
-  lastWifiAttempt = millis() - WIFI_RETRY_MS;
-  maintainWiFi();
-}
-
-void loop()
-{
-  // Keep trying to connect (or reconnect) in the background
-  maintainWiFi();
-
   // If not connected yet, just return; control packets require network
   if (WiFi.status() != WL_CONNECTED)
   {
@@ -342,35 +295,81 @@ void loop()
   switch (cmd)
   {
   case CMD_BRIGHTNESS:
-    if (len == 2)
+    if (len == 1)
     {
-      int16_t level;
-      memcpy(&level, payload, 2);
-      onBrightness(level);
+      uint8_t level;
+      memcpy(&level, payload, 1);
+      irLed.onBrightness(level);
     }
     break;
 
   case CMD_MOVEMENT:
     if (len == 8)
     {
-      float x, y;
-      memcpy(&x, payload + 0, 4);
-      memcpy(&y, payload + 4, 4);
-      onMovement(x, y);
+      float left, right;
+      memcpy(&left, payload, 4);
+      memcpy(&right, payload + 4, 4);
+      lastMovementCommand = millis();
+      motors.onMovement(left, right);
     }
     break;
 
   case CMD_CAMERA:
-    if (len == 8)
+    if (len == 4)
     {
-      float x, y;
-      memcpy(&x, payload + 0, 4);
-      memcpy(&y, payload + 4, 4);
-      onCamera(x, y);
+      uint16_t pan, tilt;
+      memcpy(&pan, payload, 2);
+      memcpy(&tilt, payload + 2, 2);
+      servos.onCamera(pan, tilt);
     }
     break;
 
   default:
     break;
+  }
+}
+
+void setup()
+{
+  Serial.begin(115200);
+  Serial.println("Booted!");
+
+  init_camera();
+
+  servos.begin();
+
+  irLed.begin();
+  motors.begin();
+
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+  WiFi.setHostname(NAME);
+
+  // Start video task immediately; it will send frames when RTSP is ready
+  xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
+
+#ifdef audio_enabled
+  init_mic();
+  xTaskCreate(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle);
+#endif
+
+  // Kick off the first connection attempt right away
+  lastWifiAttempt = millis() - WIFI_RETRY_MS;
+  maintainWiFi();
+}
+
+void loop()
+{
+  // Keep trying to connect (or reconnect) in the background
+  maintainWiFi();
+
+  // Receive and action incoming packets
+  parseControlInputs();
+
+  // Stop movement after no inputs are received
+  unsigned long now = millis();
+  if (now - lastMovementCommand > MOVEMENT_TIMEOUT)
+  {
+    motors.setVelocity(0.0f, 0.0f);
   }
 }

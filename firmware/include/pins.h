@@ -51,9 +51,9 @@
  * I2S (Microphone)
  */
 #ifdef esp32s3cam_lonelybinary
-#define PIN_I2S_SD 1
-#define PIN_I2S_WS 2
-#define PIN_I2S_SCK 42
+#define PIN_I2S_SD 42
+#define PIN_I2S_WS 41
+#define PIN_I2S_SCK 2
 #endif
 
 #ifdef esp32cam_aithinker
@@ -66,23 +66,19 @@
  * Servos
  */
 #ifdef esp32s3cam_lonelybinary
-#define PIN_SERVO_PAN 3
-#define PIN_SERVO_TILT 46
+#define PIN_SERVO_PAN 38
+#define PIN_SERVO_TILT 20
 #endif
 
 /**
  * Motors
  */
 #ifdef esp32s3cam_lonelybinary
-#define PIN_M1_IN1 47
-#define PIN_M1_IN2 48
-#define PIN_M1_ENCA 20
-#define PIN_M1_ENCB 21
+#define PIN_ML_FOR 47
+#define PIN_ML_REV 21
 
-#define PIN_M2_IN1 39
-#define PIN_M2_IN2 40
-#define PIN_M2_ENCA 45
-#define PIN_M2_ENCB 38
+#define PIN_MR_FOR 40
+#define PIN_MR_REV 39
 #endif
 
 /**
