@@ -85,7 +85,7 @@ void init_ap()
 {
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
-  WiFi.begin("Justin-ZsM16", ")(*&^%$#@");
+  WiFi.begin(AP_SSID, AP_PASS);
 }
 
 void getFrameQuality()
