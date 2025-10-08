@@ -1,6 +1,7 @@
 #include <Arduino.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
+#include "config.h"
 #include <ESP32-RTSPServer.h>
 #include "esp_camera.h"
 #include "pins.h"
@@ -34,10 +35,10 @@ static bool networkReady = false;
 static unsigned long lastWifiAttempt = 0;
 static unsigned long lastMovementCommand = 0;
 
-void hang()
-{
-  while (true)
-    delay(1000);
+void hang() {
+  while(true) {
+    delay(100);
+  }
 }
 
 void init_camera()
@@ -80,6 +81,21 @@ void init_camera()
   Serial.println("Camera: init successful");
 }
 
+String getUniqueSSID()
+{
+  uint64_t chipid = ESP.getEfuseMac();
+  char buf[32];
+  snprintf(buf, sizeof(buf), "%s-%08llX", NAME, (uint16_t)(chipid & 0xFFFF));
+  return String(buf);
+}
+
+void init_ap()
+{
+  WiFi.mode(WIFI_STA);
+  WiFi.setSleep(false);
+  WiFi.begin(HOTSPOT_SSID, HOTSPOT_PASS);
+}
+
 void getFrameQuality()
 {
   sensor_t *s = esp_camera_sensor_get();
@@ -100,7 +116,8 @@ void sendVideo(void *pvParameters)
         esp_camera_fb_return(fb);
       }
     }
-    vTaskDelay(1);
+
+    vTaskDelay(pdMS_TO_TICKS(30)); // Delay for 60 milliseconds
   }
 }
 
@@ -133,13 +150,14 @@ static bool readExactly(uint8_t *dst, size_t n)
 }
 
 #ifdef audio_enabled
-static void init_mic()
+static bool setupMic()
 {
   // I2S mic and I2S amp can share same I2S channel
   I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1); // BCLK/SCK, LRCLK/WS, SDOUT, SDIN, MCLK
-  bool res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
-  if (sampleBuffer == NULL)
+  bool res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
+  if (sampleBuffer == NULL) {
     sampleBuffer = (int16_t *)malloc(sampleBytes);
+  }
 
   if (!res)
   {
@@ -147,6 +165,7 @@ static void init_mic()
     hang();
   }
   Serial.println("Microphone: init successful");
+  return res;
 }
 
 static size_t micInput()
@@ -168,7 +187,7 @@ void sendAudio(void *pvParameters)
       else
         Serial.println("No audio received");
     }
-    vTaskDelay(pdMS_TO_TICKS(1));
+    vTaskDelay(pdMS_TO_TICKS(3)); // Delay for 3 milliseconds
   }
 }
 #endif
@@ -349,8 +368,8 @@ void setup()
   xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
 
 #ifdef audio_enabled
-  init_mic();
-  xTaskCreate(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle);
+  setupMic();
+  xTaskCreatePinnedToCore(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle, PRO_CPU_NUM);
 #endif
 
   // Kick off the first connection attempt right away
@@ -372,4 +391,6 @@ void loop()
   {
     motors.setVelocity(0.0f, 0.0f);
   }
+
+  vTaskDelay(pdMS_TO_TICKS(10)); // Delay for 10 milliseconds
 }
