@@ -81,21 +81,6 @@ void init_camera()
   Serial.println("Camera: init successful");
 }
 
-String getUniqueSSID()
-{
-  uint64_t chipid = ESP.getEfuseMac();
-  char buf[32];
-  snprintf(buf, sizeof(buf), "%s-%08llX", NAME, (uint16_t)(chipid & 0xFFFF));
-  return String(buf);
-}
-
-void init_ap()
-{
-  WiFi.mode(WIFI_STA);
-  WiFi.setSleep(false);
-  WiFi.begin(HOTSPOT_SSID, HOTSPOT_PASS);
-}
-
 void getFrameQuality()
 {
   sensor_t *s = esp_camera_sensor_get();
