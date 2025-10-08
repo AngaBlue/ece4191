@@ -40,5 +40,5 @@ static constexpr int SERVO_FREQ_HZ = 50;
 static constexpr int SERVO_RANGE_DEG = 270;
 static constexpr int SERVO_PAN_MIN_DEG = 0;
 static constexpr int SERVO_PAN_MAX_DEG = 270;
-static constexpr int SERVO_TILT_MIN_DEG = 100;
-static constexpr int SERVO_TILT_MAX_DEG = 270;
+static constexpr int SERVO_TILT_MIN_DEG = 80;
+static constexpr int SERVO_TILT_MAX_DEG = 180;
