@@ -57,9 +57,10 @@
 #endif
 
 #ifdef esp32cam_aithinker
-#define PIN_I2S_SD  13 // D13 / IO13
-#define PIN_I2S_WS  14 // D14 / IO14
-#define PIN_I2S_SCK 16 // RX2 / IO16
+#define I2S_DEVICE 1
+#define PIN_I2S_SD  14  // D13 / IO13
+#define PIN_I2S_WS  15 // D14 / IO14
+#define PIN_I2S_SCK 2  // RX2 / IO16 (can't use because PSRAM)
 #endif
 
 /**
