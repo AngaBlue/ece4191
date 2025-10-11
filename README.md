@@ -38,7 +38,7 @@ In order to reduce the video feed latency frames are served as 640x480 MJPEG on 
 While the below command is provided to view the RTSP stream, it suggested that you instead run the `/ui/app.py` script as this will automatically find the IP.
 
 ```bash
-ffplay -rtsp_transport udp -probesize 32 -analyzeduration 0 -vf setpts=0 -vcodec mjpeg -acodec pcm_s16be -ar 16000 -fflags nobuffer -fflags discardcorrupt -flags low_delay -framedrop rtsp://IP/
+ffplay -rtsp_transport udp -probesize 32 -analyzeduration 0 -vf setpts=0 -vcodec mjpeg -acodec pcm_s16be -ar 48000 -fflags nobuffer -fflags discardcorrupt -flags low_delay -framedrop rtsp://IP/
 ```
 
 You will need FFMPEG installed, which can be done by running `winget install ffmpeg`.

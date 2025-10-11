@@ -25,7 +25,7 @@ IRLED irLed(PIN_IR_LED);
 #ifdef audio_enabled
 #include <ESP_I2S.h>
 I2SClass I2S;
-int sampleRate = 16000;
+int sampleRate = 48000;
 const size_t sampleBytes = 1024;
 int16_t *sampleBuffer = NULL;
 TaskHandle_t audioTaskHandle = NULL;
