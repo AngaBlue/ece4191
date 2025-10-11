@@ -75,7 +75,7 @@ def main():
     }
 
     # Start FrameBus
-    fb = FrameBus(rtsp_url)
+    fb = FrameBus(rtsp_url, debug=True)
     fb.start()
 
     # Start control thread
