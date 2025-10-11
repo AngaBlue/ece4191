@@ -9,6 +9,7 @@
 #include "MotorControl.h"
 #include "IRLED.h"
 #include "CameraServos.h"
+#include <ESP_I2S.h>
 
 RTSPServer rtspServer;
 WiFiUDP udp;
@@ -22,14 +23,11 @@ TaskHandle_t videoTaskHandle = NULL;
 MotorControl motors;
 IRLED irLed(PIN_IR_LED);
 
-#ifdef audio_enabled
-#include <ESP_I2S.h>
 I2SClass I2S;
 int sampleRate = 48000;
 const size_t sampleBytes = 1024;
 int16_t *sampleBuffer = NULL;
 TaskHandle_t audioTaskHandle = NULL;
-#endif
 
 static bool networkReady = false;
 static unsigned long lastWifiAttempt = 0;
@@ -134,11 +132,10 @@ static bool readExactly(uint8_t *dst, size_t n)
   return true;
 }
 
-#ifdef audio_enabled
 static bool setupMic()
 {
   // I2S mic and I2S amp can share same I2S channel
-  I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1); // BCLK/SCK, LRCLK/WS, SDOUT, SDIN, MCLK
+  I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1);
   bool res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
   if (sampleBuffer == NULL) {
     sampleBuffer = (int16_t *)malloc(sampleBytes);
@@ -175,7 +172,6 @@ void sendAudio(void *pvParameters)
     vTaskDelay(pdMS_TO_TICKS(3)); // Delay for 3 milliseconds
   }
 }
-#endif
 
 // ====== Wi-Fi (STA) helpers ======
 static void printIPAndStartNetServicesIfNeeded()
@@ -190,11 +186,8 @@ static void printIPAndStartNetServicesIfNeeded()
     udp.begin(UDP_PORT);
 
     getFrameQuality();
-#ifdef audio_enabled
     rtspServer.transport = RTSPServer::VIDEO_AND_AUDIO;
-#else
-    rtspServer.transport = RTSPServer::VIDEO_ONLY;
-#endif
+    rtspServer.sampleRate = sampleRate;
 
     if (rtspServer.init())
     {
@@ -339,6 +332,7 @@ void setup()
   Serial.println("Booted!");
 
   init_camera();
+  setupMic();
 
   servos.begin();
 
@@ -351,11 +345,7 @@ void setup()
 
   // Start video task immediately; it will send frames when RTSP is ready
   xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
-
-#ifdef audio_enabled
-  setupMic();
   xTaskCreatePinnedToCore(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle, PRO_CPU_NUM);
-#endif
 
   // Kick off the first connection attempt right away
   lastWifiAttempt = millis() - WIFI_RETRY_MS;
