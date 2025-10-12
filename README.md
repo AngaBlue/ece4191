@@ -35,10 +35,11 @@ As the MCU may be assigned a new IP on each connection, use the `get_ip()` funct
 ## Low-Latency Frame Video Feed
 In order to reduce the video feed latency frames are served as 640x480 MJPEG on RTSP over UDP.  On both the MCU and client, the frame buffer should be a single frame in order to only serve the most recent information, at the cost of frame pacing.  A frame bus is provided in `/ui/FrameBus.py` to simplify reading the video stream, with example usage found in `/ui/app.py`.
 
-While the below command is provided to view the RTSP stream, it suggested that you instead run the `/ui/app.py` script as this will automatically find the IP.
+While the below commands are provided to view the RTSP stream, it suggested that you instead run the `/ui/app.py` script as this will automatically find the IP.  The first command can be used to view the video + audio streams, while the second provides only the audio.
 
 ```bash
 ffplay -rtsp_transport udp -probesize 32 -analyzeduration 0 -vf setpts=0 -vcodec mjpeg -acodec pcm_s16be -ar 48000 -fflags nobuffer -fflags discardcorrupt -flags low_delay -framedrop rtsp://IP/
+ffplay -rtsp_transport udp -probesize 32 -analyzeduration 0 -vn -acodec pcm_s16be -ar 48000 rtsp://IP/ 
 ```
 
 You will need FFMPEG installed, which can be done by running `winget install ffmpeg`.
