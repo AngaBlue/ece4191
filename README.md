@@ -7,7 +7,7 @@ Contains the C++ firmware to be uploaded to the ESP32.  In order to activate the
 Contains Python scripts primarily used for debugging and Machine Learning training.
 
 ### `/ui`
-A demo UI with a low-latency video stream, controller inputs and commands sending.
+A demo UI with a low-latency video + audio stream, controller inputs, commands sending and visual inferences.
 
 ## Contribution
 The `main` branch of this repository is protected, meaning that in order to push code to main, you will first need to do so via a pull request (PR).  To get started, create a branch off main with a meaningful name:
@@ -23,7 +23,7 @@ You can keep pushing to this branch while you are working.  When the feature is 
 Start a local hotspot on Windows by opening `Settings > Network & internet > Mobile hotspot`.
  - Share over: `WiFi`
  - Network Properties:
-   - Any name and password, just remember to white the same name later.
+   - Any name and password, just remember to write the same name later.
    - Network band: `2.4GHz`
 
 Start the mobile hotspot.  This will allow you to stay connected to the internet while controlling the robot.
@@ -32,13 +32,14 @@ To program the robot to use your hotspot, open `/firmware/include/config.h` and 
 
 As the MCU may be assigned a new IP on each connection, use the `get_ip()` function from `/ui/ip.py` to programmatically find the IP of the MCU on startup.
 
-## Low-Latency Frame Video Feed
-In order to reduce the video feed latency frames are served as 640x480 MJPEG on RTSP over UDP.  On both the MCU and client, the frame buffer should be a single frame in order to only serve the most recent information, at the cost of frame pacing.  A frame bus is provided in `/ui/FrameBus.py` to simplify reading the video stream, with example usage found in `/ui/app.py`.
+## Low-Latency Frame Video & Audio Feed
+In order to reduce the video feed latency, frames are served as 640x480 MJPEG and audio as 48kHz 16-bit on RTSP over UDP.  On both the MCU and client, the frame buffer should be a single frame in order to only serve the most recent information, at the cost of frame pacing.  A frame bus is provided in `/ui/FrameBus.py` to simplify reading the video stream, with example usage found in `/ui/app.py`.
 
 While the below commands are provided to view the RTSP stream, it suggested that you instead run the `/ui/app.py` script as this will automatically find the IP.  The first command can be used to view the video + audio streams, while the second provides only the audio.
 
 ```bash
 ffplay -rtsp_transport udp -probesize 32 -analyzeduration 0 -vf setpts=0 -vcodec mjpeg -acodec pcm_s16be -ar 48000 -fflags nobuffer -fflags discardcorrupt -flags low_delay -framedrop rtsp://IP/
+ffplay -rtsp_transport udp -probesize 32 -analyzeduration 0 -vf setpts=0 -vcodec mjpeg -an -fflags nobuffer -fflags discardcorrupt -flags low_delay -framedrop rtsp://IP/
 ffplay -rtsp_transport udp -probesize 32 -analyzeduration 0 -vn -acodec pcm_s16be -ar 48000 rtsp://IP/ 
 ```
 
