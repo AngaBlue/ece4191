@@ -54,5 +54,7 @@ void MotorControl::onMovement(float left, float right)
     left = constrain(left, -1.0f, 1.0f);
     right = constrain(right, -1.0f, 1.0f);
     this->setVelocity(left, right);
+#ifdef COMMAND_LOGGING
     Serial.printf("[UDP] Movement command: L=%.2f R=%.2f\n", left, right);
+#endif
 }

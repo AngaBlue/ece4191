@@ -25,5 +25,7 @@ void IRLED::onBrightness(uint8_t level)
     int duty = DUTIES[level];
     ledcWrite(pin_, duty);
 
+#ifdef COMMAND_LOGGING
     Serial.printf("[UDP] IR Brightness command: Level=%d -> Duty=%d)\n", level, duty);
+#endif
 }

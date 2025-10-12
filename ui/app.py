@@ -8,6 +8,7 @@ from ip import get_ip
 from control import control_loop
 from config import DRAW_FPS, PAN_HOME, SCREENSHOT_DIR, TILT_HOME, WINDOW_SCALE
 from yolo import draw_detections, yolo_loop
+from audio import audio_loop
 
 ip = get_ip()
 if ip is None:
@@ -71,7 +72,8 @@ def main():
         "control_hz": 0.0,
         "visual_inferences": False,
         "det": None,
-        "infer_hz": 0.0
+        "infer_hz": 0.0,
+        "play_audio": True
     }
 
     # Start FrameBus
@@ -88,6 +90,11 @@ def main():
     yolo_thr = threading.Thread(target=yolo_loop, args=(
         fb, state, stop_event), daemon=True)
     yolo_thr.start()
+
+    # Start audio thread
+    audio_thr = threading.Thread(target=audio_loop, args=(
+        rtsp_url, state, stop_event), daemon=True)
+    audio_thr.start()
 
     clock = pygame.time.Clock()
     last_rgb = None
@@ -138,7 +145,7 @@ def main():
                 f"IP {ip}",
                 f"Cam FPS {cam_fps:4.1f} | Draw FPS {clock.get_fps():4.1f} | Control Rate {state['control_hz']:4.1f} | Infer FPS {state.get('infer_hz', 0.0):4.1f}",
                 f"Pan {int(state['pan']):3d}° | Tilt {int(state['tilt']):3d}° | IR Brightness {state['brightness']}",
-                f"Visual Inferences {'On' if state.get('visual_inferences') else 'Off'}",
+                f"Visual Inferences {'On' if state.get('visual_inferences') else 'Off'} | Playing Audio {'On' if state.get('play_audio') else 'Off'}",
             ]
             draw_overlay(screen, font, info)
 
