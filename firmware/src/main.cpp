@@ -1,14 +1,14 @@
 #include <Arduino.h>
-#include "config.h"
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <ESP32-RTSPServer.h>
-#include "esp_camera.h"
-#include "pins.h"
+#include <ESP_I2S.h>
 #include "MotorControl.h"
 #include "IRLED.h"
 #include "CameraServos.h"
-#include <ESP_I2S.h>
+#include "esp_camera.h"
+#include "pins.h"
+#include "config.h"
 
 // Peripherals
 CameraServos servos;
