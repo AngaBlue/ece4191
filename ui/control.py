@@ -49,35 +49,37 @@ def control_loop(joystick: pygame.joystick.JoystickType,
                 continue
 
             match b:
-                case 0:
+                case 0: # Take screenshot (x)
                     state['screenshot_pending'] = True
-                case 3:
+                case 2: # Toggle audio (square)
+                    state['play_audio'] = not state['play_audio']
+                case 3: # Toggle visual inferences (triangle)
                     state['visual_inferences'] = not state['visual_inferences']
-                case 8:  # Reset angle
+                case 8:  # Reset angle (right stick in)
                     pan = 135
                     tilt = 135
                     commands.camera(pan, tilt)
-                case 11:  # Snap up
+                case 11:  # Snap up (up)
                     pan = PAN_HOME
                     tilt = TILT_HOME + 45
                     commands.camera(pan, tilt)
-                case 13:  # Snap left
+                case 13:  # Snap left (left)
                     pan = PAN_HOME + 90
                     tilt = TILT_HOME
                     commands.camera(pan, tilt)
-                case 14:  # Snap right
+                case 14:  # Snap right (right)
                     pan = PAN_HOME - 90
                     tilt = TILT_HOME
                     commands.camera(pan, tilt)
-                case 12:  # Snap down
+                case 12:  # Snap down (down)
                     pan = PAN_HOME
                     tilt = TILT_MIN
                     commands.camera(pan, tilt)
-                case 9:  # Decrease brightness
+                case 9:  # Decrease brightness (left bumper)
                     brightness = max(
                         BRIGHTNESS_MIN, brightness - BRIGHTNESS_STEP)
                     commands.set_brightness(brightness)
-                case 10:  # Increase brightness
+                case 10:  # Increase brightness (right bumper)
                     brightness = min(
                         BRIGHTNESS_MAX, brightness + BRIGHTNESS_STEP)
                     commands.set_brightness(brightness)

@@ -57,9 +57,10 @@
 #endif
 
 #ifdef esp32cam_aithinker
-#define PIN_I2S_SD  13 // D13 / IO13
-#define PIN_I2S_WS  14 // D14 / IO14
-#define PIN_I2S_SCK 16 // RX2 / IO16
+#define I2S_DEVICE 1
+#define PIN_I2S_SD  14  // D13 / IO13
+#define PIN_I2S_WS  15 // D14 / IO14
+#define PIN_I2S_SCK 2  // RX2 / IO16 (can't use because PSRAM)
 #endif
 
 /**
@@ -68,6 +69,11 @@
 #ifdef esp32s3cam_lonelybinary
 #define PIN_SERVO_PAN 38
 #define PIN_SERVO_TILT 20
+#endif
+
+#ifdef esp32cam_aithinker
+#define PIN_SERVO_PAN -1
+#define PIN_SERVO_TILT -1
 #endif
 
 /**
@@ -81,10 +87,23 @@
 #define PIN_MR_REV 39
 #endif
 
+#ifdef esp32cam_aithinker
+#define PIN_ML_FOR -1
+#define PIN_ML_REV -1
+
+#define PIN_MR_FOR -1
+#define PIN_MR_REV -1
+#endif
+
 /**
  * Other peripherals
  */
 #ifdef esp32s3cam_lonelybinary
 #define PIN_LED_WS2812 48
 #define PIN_IR_LED 19
+#endif
+
+#ifdef esp32cam_aithinker
+#define PIN_LED_WS2812 -1
+#define PIN_IR_LED     -1
 #endif
