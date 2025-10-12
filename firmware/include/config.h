@@ -19,11 +19,6 @@ static const unsigned long WIFI_RETRY_MS = 5000;
 #define FRAME_BUFFER_COUNT 1
 
 /**
- * RTSP
- */
-#define RTSP_VIDEO_NONBLOCK
-
-/**
  * UDP
  */
 #define UDP_PORT 65001

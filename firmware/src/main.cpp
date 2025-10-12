@@ -1,11 +1,10 @@
 #include <Arduino.h>
+#include "config.h"
 #include <WiFi.h>
 #include <WiFiUdp.h>
-#include "config.h"
 #include <ESP32-RTSPServer.h>
 #include "esp_camera.h"
 #include "pins.h"
-#include "config.h"
 #include "MotorControl.h"
 #include "IRLED.h"
 #include "CameraServos.h"
