@@ -30,3 +30,11 @@ def move(x: float, y: float, mid: int = 0):
 def camera(pan: int | float, tilt: int | float, mid: int = 0):
     payload = struct.pack("<HH", int(pan), int(tilt))
     send_packet(0x03, payload, mid)
+
+
+def close_sockets(mid: int = 0):
+    send_packet(0x04, bytes(), mid)
+
+
+def restart(mid: int = 0):
+    send_packet(0x05, bytes(), mid)

@@ -51,6 +51,8 @@ def control_loop(joystick: pygame.joystick.JoystickType,
             match b:
                 case 0: # Take screenshot (x)
                     state['screenshot_pending'] = True
+                case 1: # Restart (circle)
+                    commands.restart()
                 case 2: # Toggle audio (square)
                     state['play_audio'] = not state['play_audio']
                 case 3: # Toggle visual inferences (triangle)
