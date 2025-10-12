@@ -39,3 +39,8 @@ static constexpr int SERVO_PAN_MIN_DEG = 0;
 static constexpr int SERVO_PAN_MAX_DEG = 270;
 static constexpr int SERVO_TILT_MIN_DEG = 80;
 static constexpr int SERVO_TILT_MAX_DEG = 180;
+
+/**
+ * Microphone
+ */
+static constexpr int SAMPLE_RATE = 48000;

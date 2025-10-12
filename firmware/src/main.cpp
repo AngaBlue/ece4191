@@ -10,23 +10,22 @@
 #include "CameraServos.h"
 #include <ESP_I2S.h>
 
-RTSPServer rtspServer;
-WiFiUDP udp;
-char packetBuffer[255];
+// Peripherals
 CameraServos servos;
-
-// RTSP
-TaskHandle_t videoTaskHandle = NULL;
-
 MotorControl motors;
 IRLED irLed(PIN_IR_LED);
-
 I2SClass I2S;
-int sampleRate = 48000;
-const size_t sampleBytes = 1024;
-int16_t *sampleBuffer = NULL;
+const size_t SAMPLE_BUFFER_SIZE = 1024;
+int16_t sampleBuffer[SAMPLE_BUFFER_SIZE];
+
+// RTSP
+RTSPServer rtspServer;
+TaskHandle_t videoTaskHandle = NULL;
 TaskHandle_t audioTaskHandle = NULL;
 
+// UDP
+WiFiUDP udp;
+char packetBuffer[255];
 static bool networkReady = false;
 static unsigned long lastWifiAttempt = 0;
 static unsigned long lastMovementCommand = 0;
@@ -97,6 +96,71 @@ void sendVideo(void *pvParameters)
   }
 }
 
+static bool initMic()
+{
+  // I2S mic and I2S amp can share same I2S channel
+  I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1);
+  bool res = I2S.begin(I2S_MODE_STD, SAMPLE_RATE, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
+
+  if (!res)
+  {
+    Serial.println("Microphone: init failed");
+    hang();
+  }
+  Serial.println("Microphone: init successful");
+  return res;
+}
+
+void sendAudio(void *pvParameters)
+{
+  while (true)
+  {
+    if (rtspServer.readyToSendAudio())
+    {
+      size_t bytesRead = I2S.readBytes((char *)sampleBuffer, SAMPLE_BUFFER_SIZE);
+      if (bytesRead)
+        rtspServer.sendRTSPAudio(sampleBuffer, bytesRead);
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(3));
+  }
+}
+
+static void maintainWiFi()
+{
+  if (WiFi.status() == WL_CONNECTED)
+  {
+    IPAddress ip = WiFi.localIP();
+    if (!networkReady)
+    {
+      // Start UDP + RTSP only once we have a valid IP
+      udp.begin(UDP_PORT);
+      if (rtspServer.init(RTSPServer::VIDEO_AND_AUDIO, 554, SAMPLE_RATE))
+      {
+        Serial.printf("RTSP server started. Connect to rtsp://%s/\n", ip.toString().c_str());
+      }
+      else
+      {
+        Serial.println("Failed to start RTSP server");
+      }
+      networkReady = true;
+    }
+    return;
+  }
+
+  networkReady = false;
+  unsigned long now = millis() + WIFI_RETRY_MS;
+  if (now - lastWifiAttempt >= WIFI_RETRY_MS)
+  {
+    Serial.printf("Wi-Fi: attempting to connect to \"%s\"...\n", HOTSPOT_SSID);
+    if (lastWifiAttempt > 0)
+      WiFi.disconnect(true, true);
+    delay(100);
+    WiFi.begin(HOTSPOT_SSID, HOTSPOT_PASS);
+    lastWifiAttempt = now;
+  }
+}
+
 enum Command : uint8_t
 {
   CMD_BRIGHTNESS = 0x01,
@@ -127,102 +191,14 @@ static bool readExactly(uint8_t *dst, size_t n)
   return true;
 }
 
-static bool initMic()
-{
-  // I2S mic and I2S amp can share same I2S channel
-  I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1);
-  bool res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
-  if (sampleBuffer == NULL)
-  {
-    sampleBuffer = (int16_t *)malloc(sampleBytes);
-  }
-
-  if (!res)
-  {
-    Serial.println("Microphone: init failed");
-    hang();
-  }
-  Serial.println("Microphone: init successful");
-  return res;
-}
-
-static size_t micInput()
-{
-  size_t bytesRead = 0;
-  bytesRead = I2S.readBytes((char *)sampleBuffer, sampleBytes);
-  return bytesRead;
-}
-
-void sendAudio(void *pvParameters)
-{
-  while (true)
-  {
-    if (rtspServer.readyToSendAudio())
-    {
-      size_t bytesRead = micInput();
-      if (bytesRead)
-        rtspServer.sendRTSPAudio(sampleBuffer, bytesRead);
-      else
-        Serial.println("No audio received");
-    }
-    vTaskDelay(pdMS_TO_TICKS(3));
-  }
-}
-
-static void printIPAndStartNetServicesIfNeeded()
-{
-  if (WiFi.status() != WL_CONNECTED)
-    return;
-
-  IPAddress ip = WiFi.localIP();
-  if (!networkReady)
-  {
-    // Start UDP + RTSP only once we have a valid IP
-    udp.begin(UDP_PORT);
-    if (rtspServer.init(RTSPServer::VIDEO_AND_AUDIO, 554, sampleRate))
-    {
-      Serial.printf("RTSP server started. Connect to rtsp://%s/\n", ip.toString().c_str());
-    }
-    else
-    {
-      Serial.println("Failed to start RTSP server");
-    }
-    networkReady = true;
-  }
-}
-
-static void maintainWiFi()
-{
-  // Already connected
-  if (WiFi.status() == WL_CONNECTED)
-  {
-    printIPAndStartNetServicesIfNeeded();
-    return;
-  }
-
-  networkReady = false;
-  unsigned long now = millis() + WIFI_RETRY_MS;
-  if (now - lastWifiAttempt >= WIFI_RETRY_MS)
-  {
-    Serial.printf("Wi-Fi: attempting to connect to \"%s\"...\n", HOTSPOT_SSID);
-    if (lastWifiAttempt > 0)
-      WiFi.disconnect(true, true);
-    delay(100);
-    WiFi.begin(HOTSPOT_SSID, HOTSPOT_PASS);
-    lastWifiAttempt = now;
-  }
-}
-
 static void parseControlInputs()
 {
-  // If not connected yet, just return; control packets require network
   if (WiFi.status() != WL_CONNECTED)
   {
     delay(10);
     return;
   }
 
-  // ==== UDP control protocol ====
   int pktLen = udp.parsePacket();
   if (pktLen <= 0)
     return;
@@ -331,17 +307,13 @@ void setup()
   WiFi.setSleep(false);
   WiFi.setHostname(NAME);
 
-  // Start video task immediately; it will send frames when RTSP is ready
   xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
   xTaskCreatePinnedToCore(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle, PRO_CPU_NUM);
 }
 
 void loop()
 {
-  // Keep trying to connect (or reconnect) in the background
   maintainWiFi();
-
-  // Receive and action incoming packets
   parseControlInputs();
 
   // Stop movement after no inputs are received
