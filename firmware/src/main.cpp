@@ -32,17 +32,19 @@ static bool networkReady = false;
 static unsigned long lastWifiAttempt = 0;
 static unsigned long lastMovementCommand = 0;
 
-void hang() {
-  while(true) {
+void hang()
+{
+  while (true)
+  {
     delay(100);
   }
 }
 
-void init_camera()
+void initCamera()
 {
   camera_config_t c = {};
-  c.ledc_channel = LEDC_CHANNEL_0;
-  c.ledc_timer = LEDC_TIMER_0;
+  c.ledc_channel = LEDC_CHANNEL_2;
+  c.ledc_timer = LEDC_TIMER_2;
   c.pin_d0 = PIN_CAM_D0;
   c.pin_d1 = PIN_CAM_D1;
   c.pin_d2 = PIN_CAM_D2;
@@ -76,13 +78,6 @@ void init_camera()
 
   sensor_t *s = esp_camera_sensor_get();
   Serial.println("Camera: init successful");
-}
-
-void getFrameQuality()
-{
-  sensor_t *s = esp_camera_sensor_get();
-  quality = s->status.quality;
-  Serial.printf("Camera Quality is: %d\n", quality);
 }
 
 void sendVideo(void *pvParameters)
@@ -131,12 +126,13 @@ static bool readExactly(uint8_t *dst, size_t n)
   return true;
 }
 
-static bool setupMic()
+static bool initMic()
 {
   // I2S mic and I2S amp can share same I2S channel
   I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1);
   bool res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
-  if (sampleBuffer == NULL) {
+  if (sampleBuffer == NULL)
+  {
     sampleBuffer = (int16_t *)malloc(sampleBytes);
   }
 
@@ -183,11 +179,8 @@ static void printIPAndStartNetServicesIfNeeded()
   {
     // Start UDP + RTSP only once we have a valid IP
     udp.begin(UDP_PORT);
-
-    getFrameQuality();
     rtspServer.transport = RTSPServer::VIDEO_AND_AUDIO;
     rtspServer.sampleRate = sampleRate;
-
     if (rtspServer.init())
     {
       Serial.printf("RTSP server started. Connect to rtsp://%s:554/\n", ip.toString().c_str());
@@ -197,14 +190,6 @@ static void printIPAndStartNetServicesIfNeeded()
       Serial.println("Failed to start RTSP server");
     }
     networkReady = true;
-  }
-
-  static bool printed = false;
-  if (!printed)
-  {
-    Serial.print("Wi-Fi connected. IP: ");
-    Serial.println(ip);
-    printed = true;
   }
 }
 
@@ -224,7 +209,8 @@ static void maintainWiFi()
   if (now - lastWifiAttempt >= WIFI_RETRY_MS)
   {
     Serial.printf("Wi-Fi: attempting to connect to \"%s\"...\n", HOTSPOT_SSID);
-    WiFi.disconnect(true, true);
+    if (lastWifiAttempt > 0)
+      WiFi.disconnect(true, true);
     delay(100);
     WiFi.begin(HOTSPOT_SSID, HOTSPOT_PASS);
     lastWifiAttempt = now;
@@ -330,11 +316,10 @@ void setup()
   Serial.begin(115200);
   Serial.println("Booted!");
 
-  init_camera();
-  setupMic();
+  initCamera();
+  initMic();
 
   servos.begin();
-
   irLed.begin();
   motors.begin();
 
@@ -347,7 +332,6 @@ void setup()
   xTaskCreatePinnedToCore(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle, PRO_CPU_NUM);
 
   // Kick off the first connection attempt right away
-  lastWifiAttempt = millis() - WIFI_RETRY_MS;
   maintainWiFi();
 }
 
