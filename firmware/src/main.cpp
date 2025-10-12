@@ -16,7 +16,6 @@ char packetBuffer[255];
 CameraServos servos;
 
 // RTSP
-int quality;
 TaskHandle_t videoTaskHandle = NULL;
 
 MotorControl motors;
@@ -43,8 +42,8 @@ void hang()
 void initCamera()
 {
   camera_config_t c = {};
-  c.ledc_channel = LEDC_CHANNEL_2;
-  c.ledc_timer = LEDC_TIMER_2;
+  c.ledc_channel = LEDC_CHANNEL_0;
+  c.ledc_timer = LEDC_TIMER_0;
   c.pin_d0 = PIN_CAM_D0;
   c.pin_d1 = PIN_CAM_D1;
   c.pin_d2 = PIN_CAM_D2;
@@ -89,12 +88,12 @@ void sendVideo(void *pvParameters)
       camera_fb_t *fb = esp_camera_fb_get();
       if (fb)
       {
-        rtspServer.sendRTSPFrame(fb->buf, fb->len, quality, fb->width, fb->height);
+        rtspServer.sendRTSPFrame(fb->buf, fb->len, JPEG_QUALITY, fb->width, fb->height);
         esp_camera_fb_return(fb);
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(30)); // Delay for 60 milliseconds
+    vTaskDelay(pdMS_TO_TICKS(50));
   }
 }
 
@@ -103,6 +102,8 @@ enum Command : uint8_t
   CMD_BRIGHTNESS = 0x01,
   CMD_MOVEMENT = 0x02,
   CMD_CAMERA = 0x03,
+  CMD_CLOSE_SOCKETS = 0x04,
+  CMD_RESTART = 0x05
 };
 
 static uint8_t checksum(const uint8_t *buf, size_t n)
@@ -164,11 +165,10 @@ void sendAudio(void *pvParameters)
       else
         Serial.println("No audio received");
     }
-    vTaskDelay(pdMS_TO_TICKS(3)); // Delay for 3 milliseconds
+    vTaskDelay(pdMS_TO_TICKS(3));
   }
 }
 
-// ====== Wi-Fi (STA) helpers ======
 static void printIPAndStartNetServicesIfNeeded()
 {
   if (WiFi.status() != WL_CONNECTED)
@@ -179,11 +179,9 @@ static void printIPAndStartNetServicesIfNeeded()
   {
     // Start UDP + RTSP only once we have a valid IP
     udp.begin(UDP_PORT);
-    rtspServer.transport = RTSPServer::VIDEO_AND_AUDIO;
-    rtspServer.sampleRate = sampleRate;
-    if (rtspServer.init())
+    if (rtspServer.init(RTSPServer::VIDEO_AND_AUDIO, 554, sampleRate))
     {
-      Serial.printf("RTSP server started. Connect to rtsp://%s:554/\n", ip.toString().c_str());
+      Serial.printf("RTSP server started. Connect to rtsp://%s/\n", ip.toString().c_str());
     }
     else
     {
@@ -202,10 +200,8 @@ static void maintainWiFi()
     return;
   }
 
-  // Not connected — allow services to remain; they will resume once IP is back.
-  networkReady = false; // forces services to re-announce next time we connect
-
-  unsigned long now = millis();
+  networkReady = false;
+  unsigned long now = millis() + WIFI_RETRY_MS;
   if (now - lastWifiAttempt >= WIFI_RETRY_MS)
   {
     Serial.printf("Wi-Fi: attempting to connect to \"%s\"...\n", HOTSPOT_SSID);
@@ -306,6 +302,14 @@ static void parseControlInputs()
     }
     break;
 
+  case CMD_CLOSE_SOCKETS:
+    rtspServer.reinit();
+    break;
+
+  case CMD_RESTART:
+    esp_restart();
+    break;
+
   default:
     break;
   }
@@ -330,9 +334,6 @@ void setup()
   // Start video task immediately; it will send frames when RTSP is ready
   xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
   xTaskCreatePinnedToCore(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle, PRO_CPU_NUM);
-
-  // Kick off the first connection attempt right away
-  maintainWiFi();
 }
 
 void loop()
@@ -350,5 +351,5 @@ void loop()
     motors.setVelocity(0.0f, 0.0f);
   }
 
-  vTaskDelay(pdMS_TO_TICKS(10)); // Delay for 10 milliseconds
+  vTaskDelay(pdMS_TO_TICKS(10));
 }
