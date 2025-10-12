@@ -1,13 +1,14 @@
 #include <Arduino.h>
+#include "config.h"
 #include <WiFi.h>
 #include <WiFiUdp.h>
 #include <ESP32-RTSPServer.h>
 #include "esp_camera.h"
 #include "pins.h"
-#include "config.h"
 #include "MotorControl.h"
 #include "IRLED.h"
 #include "CameraServos.h"
+#include <ESP_I2S.h>
 
 RTSPServer rtspServer;
 WiFiUDP udp;
@@ -21,23 +22,20 @@ TaskHandle_t videoTaskHandle = NULL;
 MotorControl motors;
 IRLED irLed(PIN_IR_LED);
 
-#ifdef audio_enabled
-#include <ESP_I2S.h>
 I2SClass I2S;
 int sampleRate = 48000;
 const size_t sampleBytes = 1024;
 int16_t *sampleBuffer = NULL;
 TaskHandle_t audioTaskHandle = NULL;
-#endif
 
 static bool networkReady = false;
 static unsigned long lastWifiAttempt = 0;
 static unsigned long lastMovementCommand = 0;
 
-void hang()
-{
-  while (true)
-    delay(1000);
+void hang() {
+  while(true) {
+    delay(100);
+  }
 }
 
 void init_camera()
@@ -100,7 +98,8 @@ void sendVideo(void *pvParameters)
         esp_camera_fb_return(fb);
       }
     }
-    vTaskDelay(1);
+
+    vTaskDelay(pdMS_TO_TICKS(30)); // Delay for 60 milliseconds
   }
 }
 
@@ -132,14 +131,14 @@ static bool readExactly(uint8_t *dst, size_t n)
   return true;
 }
 
-#ifdef audio_enabled
-static void init_mic()
+static bool setupMic()
 {
   // I2S mic and I2S amp can share same I2S channel
-  I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1); // BCLK/SCK, LRCLK/WS, SDOUT, SDIN, MCLK
-  bool res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_32BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
-  if (sampleBuffer == NULL)
+  I2S.setPins(PIN_I2S_SCK, PIN_I2S_WS, -1, PIN_I2S_SD, -1);
+  bool res = I2S.begin(I2S_MODE_STD, sampleRate, I2S_DATA_BIT_WIDTH_16BIT, I2S_SLOT_MODE_MONO, I2S_STD_SLOT_LEFT);
+  if (sampleBuffer == NULL) {
     sampleBuffer = (int16_t *)malloc(sampleBytes);
+  }
 
   if (!res)
   {
@@ -147,6 +146,7 @@ static void init_mic()
     hang();
   }
   Serial.println("Microphone: init successful");
+  return res;
 }
 
 static size_t micInput()
@@ -168,10 +168,9 @@ void sendAudio(void *pvParameters)
       else
         Serial.println("No audio received");
     }
-    vTaskDelay(pdMS_TO_TICKS(1));
+    vTaskDelay(pdMS_TO_TICKS(3)); // Delay for 3 milliseconds
   }
 }
-#endif
 
 // ====== Wi-Fi (STA) helpers ======
 static void printIPAndStartNetServicesIfNeeded()
@@ -186,11 +185,8 @@ static void printIPAndStartNetServicesIfNeeded()
     udp.begin(UDP_PORT);
 
     getFrameQuality();
-#ifdef audio_enabled
     rtspServer.transport = RTSPServer::VIDEO_AND_AUDIO;
-#else
-    rtspServer.transport = RTSPServer::VIDEO_ONLY;
-#endif
+    rtspServer.sampleRate = sampleRate;
 
     if (rtspServer.init())
     {
@@ -335,6 +331,7 @@ void setup()
   Serial.println("Booted!");
 
   init_camera();
+  setupMic();
 
   servos.begin();
 
@@ -347,11 +344,7 @@ void setup()
 
   // Start video task immediately; it will send frames when RTSP is ready
   xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
-
-#ifdef audio_enabled
-  init_mic();
-  xTaskCreate(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle);
-#endif
+  xTaskCreatePinnedToCore(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle, PRO_CPU_NUM);
 
   // Kick off the first connection attempt right away
   lastWifiAttempt = millis() - WIFI_RETRY_MS;
@@ -372,4 +365,6 @@ void loop()
   {
     motors.setVelocity(0.0f, 0.0f);
   }
+
+  vTaskDelay(pdMS_TO_TICKS(10)); // Delay for 10 milliseconds
 }
