@@ -15,7 +15,7 @@ CameraServos servos;
 MotorControl motors;
 IRLED irLed(PIN_IR_LED);
 I2SClass I2S;
-const size_t SAMPLE_BUFFER_SIZE = 1024;
+const size_t SAMPLE_BUFFER_SIZE = 1920;
 int16_t sampleBuffer[SAMPLE_BUFFER_SIZE];
 
 // RTSP
@@ -122,7 +122,7 @@ void sendAudio(void *pvParameters)
         rtspServer.sendRTSPAudio(sampleBuffer, bytesRead);
     }
 
-    vTaskDelay(pdMS_TO_TICKS(3));
+    vTaskDelay(pdMS_TO_TICKS(20));
   }
 }
 
@@ -296,19 +296,19 @@ void setup()
   Serial.begin(115200);
   Serial.println("Booted!");
 
-  initCamera();
-  initMic();
-
   servos.begin();
   irLed.begin();
   motors.begin();
+
+  initCamera();
+  initMic();
 
   WiFi.mode(WIFI_STA);
   WiFi.setSleep(false);
   WiFi.setHostname(NAME);
 
   xTaskCreatePinnedToCore(sendVideo, "Video", 12288, NULL, 9, &videoTaskHandle, APP_CPU_NUM);
-  xTaskCreatePinnedToCore(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle, PRO_CPU_NUM);
+  xTaskCreatePinnedToCore(sendAudio, "Audio", 8192, NULL, 8, &audioTaskHandle, APP_CPU_NUM);
 }
 
 void loop()
