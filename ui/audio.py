@@ -17,7 +17,7 @@ def audio_loop(url: str,
         "-analyzeduration", "0",
         "-vn",
         "-acodec", "pcm_s16be",
-        "-ar", "48000",
+        "-ar", "16000",
         url,
     ]
     process = None

@@ -43,4 +43,4 @@ static constexpr int SERVO_TILT_MAX_DEG = 180;
 /**
  * Microphone
  */
-static constexpr int SAMPLE_RATE = 48000;
+static constexpr int SAMPLE_RATE = 16000;
