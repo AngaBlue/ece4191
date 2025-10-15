@@ -12,7 +12,7 @@ PORT = 65001
 W, H = 640, 480
 
 # Joysticks
-DEADZONE = 0.05             # joystick deadzone (0.0–0.2 typical)
+DEADZONE = 0.1              # joystick deadzone (0.0–0.2 typical)
 EXPO = 0.8                  # response shaping (0=linear, 1=very soft center)
 K_TURN_SPEED = 1.0          # reduce turning at speed (0=none, 1=full)
 QUICKTURN_THRESH = 0.10     # allow full spin when |forward| < threshold
