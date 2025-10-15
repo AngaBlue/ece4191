@@ -35,11 +35,10 @@ def draw_overlay(surface, font, info):
         y += font.get_height() + 4
 
 
-def save_screenshot(rgb_frame):
+def save_screenshot(surface):
     ts = time.strftime("%Y%m%d-%H%M%S")
     path = os.path.join(SCREENSHOT_DIR, f"shot-{ts}.png")
-    pygame.image.save(pygame.surfarray.make_surface(
-        np.transpose(rgb_frame, (1, 0, 2))), path)
+    pygame.image.save(surface, path)
     print(f"[Screenshot] saved to {path}")
 
 
@@ -112,11 +111,6 @@ def main():
                 rgb = bgr[:, :, ::-1]
                 last_rgb = rgb
 
-                # Screenshot
-                if state["screenshot_pending"]:
-                    save_screenshot(last_rgb)
-                    state["screenshot_pending"] = False
-
                 # Safe surface creation (copy) to avoid buffer lifetime issues
                 surf = pygame.surfarray.make_surface(
                     np.transpose(rgb, (1, 0, 2)))
@@ -138,6 +132,11 @@ def main():
             # Draw detections (latest published; may lag behind the video)
             if state.get("visual_inferences", False):
                 draw_detections(screen, state.get("det"), font)
+
+            # Screenshot (with detections)
+            if state["screenshot_pending"]:
+                save_screenshot(screen)
+                state["screenshot_pending"] = False
 
             # Overlay info
             cam_fps = fb.fps()
