@@ -37,8 +37,8 @@ TILT_MAX = 180
 SERVO_RATE = 200 * SAMPLE_RATE  # deg per tick
 
 # YOLO
-YOLO_MODEL = os.environ.get("YOLO_MODEL", "E23.pt")
+YOLO_MODEL = os.environ.get("YOLO_MODEL", "E00.pt")
 YOLO_CONF = float(os.environ.get("YOLO_CONF", "0.6"))
 YOLO_IOU = float(os.environ.get("YOLO_IOU",  "0.45"))
 CLASS_NAMES = ['Tasmanian Devil', 'Cockatoo', 'Crocodile',
-               'Frog', 'Kangaroo', 'Koala', 'Platypus', 'Wombat']
+               'Frog', 'Kangaroo', 'Koala', 'Platypus', 'Wombat', 'Snake', 'Owl']

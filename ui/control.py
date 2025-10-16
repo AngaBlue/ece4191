@@ -49,39 +49,35 @@ def control_loop(joystick: pygame.joystick.JoystickType,
                 continue
 
             match b:
-                case 0: # Take screenshot (x)
+                case 0:
                     state['screenshot_pending'] = True
-                case 1: # Restart (circle)
-                    commands.restart()
-                case 2: # Toggle audio (square)
-                    state['play_audio'] = not state['play_audio']
-                case 3: # Toggle visual inferences (triangle)
+                case 3:
                     state['visual_inferences'] = not state['visual_inferences']
-                case 8:  # Reset angle (right stick in)
+                case 8:  # Reset angle
                     pan = 135
                     tilt = 135
                     commands.camera(pan, tilt)
-                case 11:  # Snap up (up)
+                case 11:  # Snap up
                     pan = PAN_HOME
                     tilt = TILT_HOME + 45
                     commands.camera(pan, tilt)
-                case 13:  # Snap left (left)
+                case 13:  # Snap left
                     pan = PAN_HOME + 90
                     tilt = TILT_HOME
                     commands.camera(pan, tilt)
-                case 14:  # Snap right (right)
+                case 14:  # Snap right
                     pan = PAN_HOME - 90
                     tilt = TILT_HOME
                     commands.camera(pan, tilt)
-                case 12:  # Snap down (down)
+                case 12:  # Snap down
                     pan = PAN_HOME
                     tilt = TILT_MIN
                     commands.camera(pan, tilt)
-                case 9:  # Decrease brightness (left bumper)
+                case 9:  # Decrease brightness
                     brightness = max(
                         BRIGHTNESS_MIN, brightness - BRIGHTNESS_STEP)
                     commands.set_brightness(brightness)
-                case 10:  # Increase brightness (right bumper)
+                case 10:  # Increase brightness
                     brightness = min(
                         BRIGHTNESS_MAX, brightness + BRIGHTNESS_STEP)
                     commands.set_brightness(brightness)
@@ -103,6 +99,39 @@ def control_loop(joystick: pygame.joystick.JoystickType,
             tilt = clamp(TILT_MIN, TILT_MAX, tilt +
                          raw_tilt * SERVO_RATE)
             commands.camera(pan, tilt)
+
+        # =====================================================================
+        # Driving direction
+# Apply same shaping and deadzone logic for UI
+        sx = shape(left_x)
+        sy = shape(left_y)
+
+        if abs(sy) > 0.1 or abs(sx) > 0.1:
+            if abs(sy) > abs(sx):
+                drive_dir = "forward" if sy > 0 else "backward"
+            else:
+                drive_dir = "left" if sx < 0 else "right"
+        else:
+            drive_dir = "none"
+
+        # Camera direction
+        if abs(raw_tilt) > 0.1 or abs(raw_pan) > 0.1:
+            if abs(raw_tilt) > abs(raw_pan):
+                cam_dir = "up" if raw_tilt > 0 else "down"
+            else:
+                cam_dir = "left" if raw_pan < 0 else "right"
+        else:
+            cam_dir = "none"
+
+        # publish state for overlay and buttons
+        state.update({
+            "brightness": brightness,
+            "pan": pan,
+            "tilt": tilt,
+            "drive_dir": drive_dir,
+            "cam_dir": cam_dir
+        })
+        # =====================================================================
 
         # publish state for overlay
         state["brightness"] = brightness
