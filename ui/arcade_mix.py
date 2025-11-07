@@ -35,7 +35,7 @@ def arcade_mix(raw_x: float, raw_y: float) -> tuple[float, float]:
     left = v + w
     right = v - w
 
-    # Normalize
+    # Normalise
     m = max(1.0, abs(left), abs(right))
     left /= m
     right /= m
@@ -44,7 +44,7 @@ def arcade_mix(raw_x: float, raw_y: float) -> tuple[float, float]:
     left *= LEFT_GAIN
     right *= RIGHT_GAIN
 
-    # Map into [±MIN_DUTY, ±1]
+    # Map into [+/-MIN_DUTY, +/-1]
     left = _apply_min_duty(left)
     right = _apply_min_duty(right)
 
